@@ -1,6 +1,14 @@
+/**
+ * TELA: HomeScreen (Tela Inicial)
+ */
+
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native'; // ← CORRETO: vem do native, não do drawer
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { RootDrawerParamList } from '../types/navigation';
+
+type HomeScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Home'>;
 
 const menuItems = [
   { id: 'consultor', title: 'Cadastrar Consultor', icon: '👤' },
@@ -11,28 +19,18 @@ const menuItems = [
 ];
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
 
   const handleNavigate = (title: string) => {
-    Alert.alert('Navegação', `Ir para: ${title}`);
-  };
-
-  const openDrawer = () => {
-    navigation.dispatch(DrawerActions.openDrawer());
+    if (title === 'Cadastrar Consultor') {
+      navigation.navigate('Consultores');
+    } else {
+      Alert.alert('Navegação', `Ir para: ${title}`);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuButton}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>FACILITE</Text>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Text style={styles.notificationIcon}>🔔</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.welcomeArea}>
         <Text style={styles.welcomeText}>Olá, João!</Text>
         <Text style={styles.subtitleText}>O que deseja fazer hoje?</Text>
@@ -60,13 +58,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FC' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  menuButton: { padding: 8 },
-  menuIcon: { fontSize: 28, color: '#1A1A1A' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1A1A1A' },
-  notificationButton: { padding: 8 },
-  notificationIcon: { fontSize: 22, color: '#6C757D' },
-  welcomeArea: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24 },
+  welcomeArea: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
   welcomeText: { fontSize: 18, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
   subtitleText: { fontSize: 14, color: '#6C757D' },
   menuContainer: { flex: 1, paddingHorizontal: 16 },
