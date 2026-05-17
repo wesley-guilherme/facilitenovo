@@ -8,6 +8,7 @@ import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navig
 import { StatusBar, Text, Image, StyleSheet, View, TouchableOpacity } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
 import ConsultoresScreen from './src/screens/ConsultoresScreen';
+import CadastroConsultorScreen from './src/screens/CadastroConsultorScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { RootDrawerParamList } from './src/types/navigation';
@@ -91,6 +92,14 @@ export default function App() {
             options={{
               drawerLabel: 'Consultores',
               headerShown: false, // Remove o cabeçalho padrão do Drawer
+            }}
+          />
+          <Drawer.Screen
+            name="CadastroConsultor"
+            component={CadastroConsultorScreen}
+            options={{
+              drawerLabel: 'Cadastro',
+              headerShown: false,
             }}
           />
         </Drawer.Navigator>

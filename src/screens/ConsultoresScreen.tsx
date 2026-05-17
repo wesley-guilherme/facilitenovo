@@ -1,5 +1,15 @@
 /**
  * TELA: ConsultoresScreen
+ * 
+ * FUNÇÃO:
+ * Exibe a lista de consultores cadastrados.
+ * Permite pesquisar, adicionar novo consultor e voltar para tela inicial.
+ * 
+ * ALTERAÇÕES:
+ * - Cabeçalho fixo (não rola) - SEM seta e SEM botão +
+ * - Barra de pesquisa fixa (não rola)
+ * - Botão "← Voltar" abaixo da pesquisa
+ * - Apenas a lista de cards rola
  */
 
 import React, { useState } from 'react';
@@ -12,10 +22,15 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
 type ConsultoresScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Consultores'>;
 
@@ -43,7 +58,7 @@ export default function ConsultoresScreen() {
   );
 
   const handleAddConsultor = () => {
-    Alert.alert('Cadastrar', 'Abrir tela de cadastro de consultor');
+    navigation.navigate('CadastroConsultor');
   };
 
   const handleVoltar = () => {
@@ -82,14 +97,16 @@ export default function ConsultoresScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Cabeçalho da tela de consultores - SEM SETA */}
-      <View style={styles.header}>
-        <View style={styles.placeholder} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
+      
+      {/* CORREÇÃO 1: Cabeçalho FIXO - sem seta, sem botão + */}
+      <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
+        <View style={styles.placeholderLeft} />
         <Text style={styles.headerTitle}>Consultores</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.placeholderRight} />
       </View>
 
-      {/* Barra de Pesquisa */}
+      {/* CORREÇÃO 2: Barra de Pesquisa FIXA */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Text style={styles.searchIconLeft}>🔍</Text>
@@ -106,14 +123,14 @@ export default function ConsultoresScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Botão Voltar para tela inicial */}
+      {/* CORREÇÃO 3: Botão Voltar (fixo) */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity style={styles.voltarButton} onPress={handleVoltar}>
           <Text style={styles.voltarButtonText}>← Voltar</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Lista de Consultores */}
+      {/* CORREÇÃO 4: Apenas a lista de cards ROLA */}
       {consultoresFiltrados.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Nenhum consultor cadastrado</Text>
@@ -131,7 +148,7 @@ export default function ConsultoresScreen() {
         />
       )}
 
-      {/* FAB (Botão flutuante +) */}
+      {/* FAB (Botão flutuante +) - FIXO */}
       <TouchableOpacity
         style={styles.fab}
         onPress={handleAddConsultor}
@@ -148,30 +165,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FC',
   },
+  // Cabeçalho FIXO (sem seta e sem botão +)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     backgroundColor: '#F8F9FC',
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
   },
-  placeholder: {
+  placeholderLeft: {
     width: 44,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1A1A1A',
   },
+  placeholderRight: {
+    width: 44,
+  },
+  // Barra de Pesquisa FIXA
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: '#F8F9FC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+    zIndex: 9,
   },
   searchInputContainer: {
     flex: 1,
@@ -207,27 +237,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Botão Voltar (fixo)
   bottomContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingVertical: 8,
   },
   voltarButton: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderWidth: 1,
     borderColor: '#E9ECEF',
     alignSelf: 'flex-start',
   },
   voltarButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#2463EB',
     fontWeight: '500',
   },
+  // Lista ROLÁVEL
   listContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 90,
+    paddingBottom: 80,
   },
   card: {
     flexDirection: 'row',
@@ -277,9 +309,10 @@ const styles = StyleSheet.create({
     color: '#6C757D',
     marginLeft: 12,
   },
+  // FAB (Botão flutuante)
   fab: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 40,
     right: 24,
     width: 56,
     height: 56,
@@ -292,6 +325,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+    zIndex: 10,
   },
   fabIcon: {
     fontSize: 32,
