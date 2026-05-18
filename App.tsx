@@ -9,6 +9,10 @@ import { StatusBar, Text, Image, StyleSheet, View, TouchableOpacity } from 'reac
 import HomeScreen from './src/screens/HomeScreen';
 import ConsultoresScreen from './src/screens/ConsultoresScreen';
 import CadastroConsultorScreen from './src/screens/CadastroConsultorScreen';
+import EditarConsultorScreen from './src/screens/EditarConsultorScreen';
+import EmpresasScreen from './src/screens/EmpresasScreen';
+import CadastroEmpresaScreen from './src/screens/CadastroEmpresaScreen';
+import EditarEmpresaScreen from './src/screens/EditarEmpresaScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { RootDrawerParamList } from './src/types/navigation';
@@ -45,19 +49,13 @@ function CustomHeader({ navigation }: any) {
   );
 }
 
-// Componente de cabeçalho padrão para outras telas (sem menu e sem sino)
-function DefaultHeader({ navigation, back }: any) {
+// Cabeçalho padrão para outras telas (sem menu hambúrguer)
+function DefaultHeader() {
   return (
     <View style={styles.defaultHeader}>
-      {back ? (
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.backButtonPlaceholder} />
-      )}
+      <View style={styles.placeholderLeft} />
       <Text style={styles.defaultHeaderTitle}>FACILITE</Text>
-      <View style={styles.backButtonPlaceholder} />
+      <View style={styles.placeholderRight} />
     </View>
   );
 }
@@ -74,7 +72,6 @@ export default function App() {
             drawerLabelStyle: { fontSize: 16, color: '#1A1A1A' },
             drawerActiveTintColor: '#2463EB',
             drawerInactiveTintColor: '#6C757D',
-            headerShown: true,
           }}
         >
           <Drawer.Screen
@@ -83,7 +80,8 @@ export default function App() {
             options={{
               title: 'FACILITE',
               drawerLabel: 'Início',
-              header: (props: any) => <CustomHeader {...props} />, // Cabeçalho personalizado APENAS para Home
+              header: (props: any) => <CustomHeader {...props} />,
+              headerShown: true,
             }}
           />
           <Drawer.Screen
@@ -91,14 +89,46 @@ export default function App() {
             component={ConsultoresScreen}
             options={{
               drawerLabel: 'Consultores',
-              headerShown: false, // Remove o cabeçalho padrão do Drawer
+              headerShown: false,
             }}
           />
           <Drawer.Screen
             name="CadastroConsultor"
             component={CadastroConsultorScreen}
             options={{
-              drawerLabel: 'Cadastro',
+              drawerLabel: 'Cadastro Consultor',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="EditarConsultor"
+            component={EditarConsultorScreen}
+            options={{
+              drawerLabel: 'Editar Consultor',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="Empresas"
+            component={EmpresasScreen}
+            options={{
+              drawerLabel: 'Empresas',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="CadastroEmpresa"
+            component={CadastroEmpresaScreen}
+            options={{
+              drawerLabel: 'Cadastro Empresa',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="EditarEmpresa"
+            component={EditarEmpresaScreen}
+            options={{
+              drawerLabel: 'Editar Empresa',
               headerShown: false,
             }}
           />
@@ -159,20 +189,15 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#F8F9FC',
   },
-  backButton: {
-    padding: 8,
-    width: 44,
-  },
-  backIcon: {
-    fontSize: 28,
-    color: '#2463EB',
-  },
-  backButtonPlaceholder: {
+  placeholderLeft: {
     width: 44,
   },
   defaultHeaderTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1A1A1A',
+  },
+  placeholderRight: {
+    width: 44,
   },
 });

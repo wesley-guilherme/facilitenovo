@@ -3,13 +3,8 @@
  * 
  * FUNÇÃO:
  * Exibe a lista de consultores cadastrados.
- * Permite pesquisar, adicionar novo consultor e voltar para tela inicial.
- * 
- * ALTERAÇÕES:
- * - Cabeçalho fixo (não rola) - SEM seta e SEM botão +
- * - Barra de pesquisa fixa (não rola)
- * - Botão "← Voltar" abaixo da pesquisa
- * - Apenas a lista de cards rola
+ * - Clique no card → Exibe detalhes (Alert)
+ * - Clique na seta (✎) → Abre tela de edição
  */
 
 import React, { useState } from 'react';
@@ -40,12 +35,38 @@ type Consultor = {
   email: string;
   telefone: string;
   empresa: string;
+  rota: string;
+  ativo: boolean;
 };
 
 const MOCK_CONSULTORES: Consultor[] = [
-  { id: '1', nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 99999-1111', empresa: 'Tech Solutions' },
-  { id: '2', nome: 'Maria Oliveira', email: 'maria@email.com', telefone: '(11) 99999-2222', empresa: 'InovaTech' },
-  { id: '3', nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 99999-3333', empresa: 'DataPro' },
+  { 
+    id: '1', 
+    nome: 'João Silva', 
+    email: 'joao@email.com', 
+    telefone: '(11) 99999-1111', 
+    empresa: 'Tech Solutions',
+    rota: 'Rota Sul',
+    ativo: true
+  },
+  { 
+    id: '2', 
+    nome: 'Maria Oliveira', 
+    email: 'maria@email.com', 
+    telefone: '(11) 99999-2222', 
+    empresa: 'InovaTech',
+    rota: 'Rota Norte',
+    ativo: true
+  },
+  { 
+    id: '3', 
+    nome: 'Carlos Souza', 
+    email: 'carlos@email.com', 
+    telefone: '(11) 99999-3333', 
+    empresa: 'DataPro',
+    rota: 'Rota Leste',
+    ativo: false  // Exemplo de desativado
+  },
 ];
 
 export default function ConsultoresScreen() {
@@ -73,40 +94,65 @@ export default function ConsultoresScreen() {
     }
   };
 
-  const handleConsultorPress = (consultor: Consultor) => {
-    Alert.alert('Detalhes', `Nome: ${consultor.nome}\nEmail: ${consultor.email}\nTelefone: ${consultor.telefone}\nEmpresa: ${consultor.empresa}`);
+  // Exibe detalhes ao clicar no card
+// Exibe detalhes ao clicar no card (com as informações solicitadas)
+const handleConsultorPress = (consultor: Consultor) => {
+  // Determina o status do consultor (simulando - depois virá do banco)
+  const status = consultor.id === '1' ? 'Ativado' : 'Ativado'; // Exemplo: todos ativados
+  // Para teste com desativado, use: const status = consultor.id === '2' ? 'Desativado' : 'Ativado';
+  
+  Alert.alert(
+    'Detalhes do Consultor',
+    `📛 Nome: ${consultor.nome}\n📧 Email: ${consultor.email}\n📱 WhatsApp: ${consultor.telefone}\n🗺️ Rota: ${consultor.rota || 'Rota A'}\n✅ Status: ${status}`,
+    [{ text: 'OK' }]
+  );
+};
+
+  // Navega para edição ao clicar na seta
+  const handleEditarPress = (consultor: Consultor) => {
+    navigation.navigate('EditarConsultor', { consultor });
   };
 
+  // RenderItem com duas áreas clicáveis
   const renderItem = ({ item }: { item: Consultor }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => handleConsultorPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardContent}>
+    <View style={styles.card}>
+      {/* Área do card (clicável para detalhes) */}
+      <TouchableOpacity
+        style={styles.cardContent}
+        onPress={() => handleConsultorPress(item)}
+        activeOpacity={0.7}
+      >
         <Text style={styles.cardNome}>{item.nome}</Text>
         <Text style={styles.cardEmail}>{item.email}</Text>
         <View style={styles.cardEmpresaContainer}>
           <Text style={styles.cardEmpresaIcon}>🏢</Text>
           <Text style={styles.cardEmpresa}>{item.empresa}</Text>
         </View>
-      </View>
-      <Text style={styles.cardArrow}>→</Text>
-    </TouchableOpacity>
+      </TouchableOpacity>
+      
+      {/* Botão da seta (clicável para edição) */}
+      <TouchableOpacity
+        style={styles.cardArrowButton}
+        onPress={() => handleEditarPress(item)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.cardArrow}>✎</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* CORREÇÃO 1: Cabeçalho FIXO - sem seta, sem botão + */}
+      {/* Cabeçalho FIXO - sem seta, sem botão + */}
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
         <View style={styles.placeholderLeft} />
         <Text style={styles.headerTitle}>Consultores</Text>
         <View style={styles.placeholderRight} />
       </View>
 
-      {/* CORREÇÃO 2: Barra de Pesquisa FIXA */}
+      {/* Barra de Pesquisa FIXA */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Text style={styles.searchIconLeft}>🔍</Text>
@@ -123,14 +169,14 @@ export default function ConsultoresScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* CORREÇÃO 3: Botão Voltar (fixo) */}
+      {/* Botão Voltar (fixo) */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity style={styles.voltarButton} onPress={handleVoltar}>
           <Text style={styles.voltarButtonText}>← Voltar</Text>
         </TouchableOpacity>
       </View>
 
-      {/* CORREÇÃO 4: Apenas a lista de cards ROLA */}
+      {/* Lista de Consultores */}
       {consultoresFiltrados.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Nenhum consultor cadastrado</Text>
@@ -148,7 +194,7 @@ export default function ConsultoresScreen() {
         />
       )}
 
-      {/* FAB (Botão flutuante +) - FIXO */}
+      {/* FAB (Botão flutuante +) */}
       <TouchableOpacity
         style={styles.fab}
         onPress={handleAddConsultor}
@@ -165,7 +211,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FC',
   },
-  // Cabeçalho FIXO (sem seta e sem botão +)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,7 +238,6 @@ const styles = StyleSheet.create({
   placeholderRight: {
     width: 44,
   },
-  // Barra de Pesquisa FIXA
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -237,7 +281,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Botão Voltar (fixo)
   bottomContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -256,7 +299,6 @@ const styles = StyleSheet.create({
     color: '#2463EB',
     fontWeight: '500',
   },
-  // Lista ROLÁVEL
   listContainer: {
     paddingHorizontal: 16,
     paddingBottom: 80,
@@ -267,7 +309,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -276,9 +317,11 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#E9ECEF',
+    overflow: 'hidden',
   },
   cardContent: {
     flex: 1,
+    padding: 16,
   },
   cardNome: {
     fontSize: 16,
@@ -304,15 +347,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4A4A4A',
   },
-  cardArrow: {
-    fontSize: 18,
-    color: '#6C757D',
-    marginLeft: 12,
+  // ESTILO CORRIGIDO (adicionado)
+  cardArrowButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FC',
+    borderLeftWidth: 1,
+    borderLeftColor: '#E9ECEF',
   },
-  // FAB (Botão flutuante)
+  cardArrow: {
+    fontSize: 20,
+    color: '#2463EB',
+    fontWeight: '600',
+  },
   fab: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 48,
     right: 24,
     width: 56,
     height: 56,

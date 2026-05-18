@@ -21,13 +21,15 @@ const menuItems = [
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
-  const handleNavigate = (title: string) => {
-    if (title === 'Cadastrar Consultor') {
-      navigation.navigate('Consultores');
-    } else {
-      Alert.alert('Navegação', `Ir para: ${title}`);
-    }
-  };
+const handleNavigate = (title: string) => {
+  if (title === 'Cadastrar Consultor') {
+    navigation.navigate('Consultores');
+  } else if (title === 'Cadastrar Empresa') {
+    navigation.navigate('Empresas');
+  } else {
+    Alert.alert('Navegação', `Ir para: ${title}`);
+  }
+};
 
   return (
     <View style={styles.container}>
