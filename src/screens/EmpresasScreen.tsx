@@ -3,9 +3,10 @@
  * 
  * FUNÇÃO:
  * Exibe a lista de empresas cadastradas.
- * - Pesquisa por código de referência ou nome fantasia
+ * - Pesquisa automática por código de referência ou nome fantasia
  * - Clique no card → Exibe detalhes (Alert)
  * - Clique na seta (✎) → Abre tela de edição
+ * - Botão Voltar no cabeçalho
  */
 
 import React, { useState } from 'react';
@@ -102,7 +103,7 @@ export default function EmpresasScreen() {
   const [pesquisa, setPesquisa] = useState('');
   const [empresas, setEmpresas] = useState<Empresa[]>(MOCK_EMPRESAS);
 
-  // Pesquisa por código de referência ou nome fantasia
+  // CORREÇÃO 1: Pesquisa automática (sem botão Buscar)
   const empresasFiltradas = empresas.filter(empresa =>
     empresa.codigoReferencia.toLowerCase().includes(pesquisa.toLowerCase()) ||
     empresa.nomeFantasia.toLowerCase().includes(pesquisa.toLowerCase())
@@ -116,14 +117,7 @@ export default function EmpresasScreen() {
     navigation.goBack();
   };
 
-  const handlePesquisar = () => {
-    if (pesquisa.trim() === '') {
-      Alert.alert('Pesquisa', 'Digite um código ou nome para pesquisar');
-    } else {
-      Alert.alert('Pesquisa', `Buscando por: ${pesquisa}`);
-    }
-    Keyboard.dismiss(); // Fecha o teclado após pesquisar
-  };
+  // Função handlePesquisar REMOVIDA (busca automática)
 
   // Detalhes da empresa ao clicar no card
   const handleEmpresaPress = (empresa: Empresa) => {
@@ -154,16 +148,13 @@ export default function EmpresasScreen() {
     Keyboard.dismiss();
   };
 
-  // Card com foto, código, nome fantasia, contato e cidade
   const renderItem = ({ item }: { item: Empresa }) => (
     <View style={styles.card}>
-      {/* Área do card (clicável para detalhes) */}
       <TouchableOpacity
         style={styles.cardContent}
         onPress={() => handleEmpresaPress(item)}
         activeOpacity={0.7}
       >
-        {/* Logo da empresa */}
         <View style={styles.cardLogoContainer}>
           {item.logo ? (
             <Image source={{ uri: item.logo }} style={styles.cardLogo} />
@@ -174,7 +165,6 @@ export default function EmpresasScreen() {
           )}
         </View>
         
-        {/* Informações da empresa */}
         <View style={styles.cardInfo}>
           <Text style={styles.cardCodigo}>🔢 {item.codigoReferencia}</Text>
           <Text style={styles.cardNome}>{item.nomeFantasia}</Text>
@@ -189,7 +179,6 @@ export default function EmpresasScreen() {
         </View>
       </TouchableOpacity>
       
-      {/* Botão da seta (clicável para edição) */}
       <TouchableOpacity
         style={styles.cardArrowButton}
         onPress={() => handleEditarPress(item)}
@@ -211,14 +200,16 @@ export default function EmpresasScreen() {
       >
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.flexContainer}>
-            {/* Cabeçalho sem seta de voltar */}
+            {/* CORREÇÃO 2: Cabeçalho com botão Voltar (←) */}
             <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
-                <View style={styles.placeholderLeft} />
-                <Text style={styles.headerTitle}>Empresas</Text>
-                <View style={styles.placeholderRight} />
+              <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
+                <Text style={styles.backIcon}>←</Text>
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Empresas</Text>
+              <View style={styles.placeholderRight} />
             </View>
 
-            {/* Barra de Pesquisa */}
+            {/* CORREÇÃO 3: Barra de Pesquisa sem botão Buscar (campo ocupa 100%) */}
             <View style={styles.searchContainer}>
               <View style={styles.searchInputContainer}>
                 <Text style={styles.searchIconLeft}>🔍</Text>
@@ -228,20 +219,11 @@ export default function EmpresasScreen() {
                   placeholderTextColor="#ADB5BD"
                   value={pesquisa}
                   onChangeText={setPesquisa}
-                  returnKeyType="search"
-                  onSubmitEditing={handlePesquisar}
+                  returnKeyType="done"
+                  onSubmitEditing={dismissKeyboard}
                 />
               </View>
-              <TouchableOpacity style={styles.searchButton} onPress={handlePesquisar}>
-                <Text style={styles.searchButtonText}>Buscar</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Botão Voltar */}
-            <View style={styles.bottomContainer}>
-              <TouchableOpacity style={styles.voltarButton} onPress={handleVoltar}>
-                <Text style={styles.voltarButtonText}>← Voltar</Text>
-              </TouchableOpacity>
+              {/* Botão Buscar REMOVIDO */}
             </View>
 
             {/* Lista de Empresas */}
@@ -266,7 +248,7 @@ export default function EmpresasScreen() {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* FAB (Botão flutuante +) - FORA do KeyboardAvoidingView */}
+      {/* FAB (Botão flutuante +) */}
       <TouchableOpacity
         style={styles.fab}
         onPress={handleAddEmpresa}
@@ -289,7 +271,7 @@ const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
   },
-  // Cabeçalho sem seta de voltar
+  // CORREÇÃO: Cabeçalho com botão voltar
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -300,8 +282,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
   },
-  placeholderLeft: {
-    width: 44,  // ← ESTILO ADICIONADO
+  backButton: {
+    padding: 8,
+    width: 44,
+  },
+  backIcon: {
+    fontSize: 32,
+    color: '#1A1A1A',
   },
   headerTitle: {
     fontSize: 20,
@@ -311,8 +298,8 @@ const styles = StyleSheet.create({
   placeholderRight: {
     width: 44,
   },
+  // CORREÇÃO: Barra de pesquisa sem botão (campo ocupa 100%)
   searchContainer: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#F8F9FC',
@@ -320,14 +307,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E9ECEF',
   },
   searchInputContainer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    marginRight: 12,
     paddingHorizontal: 12,
   },
   searchIconLeft: {
@@ -340,36 +325,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#1A1A1A',
-  },
-  searchButton: {
-    backgroundColor: '#2463EB',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bottomContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  voltarButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    alignSelf: 'flex-start',
-  },
-  voltarButtonText: {
-    fontSize: 14,
-    color: '#2463EB',
-    fontWeight: '500',
   },
   listContainer: {
     paddingHorizontal: 16,

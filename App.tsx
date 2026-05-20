@@ -7,12 +7,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { StatusBar, Text, Image, StyleSheet, View, TouchableOpacity } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
-import ConsultoresScreen from './src/screens/ConsultoresScreen';
-import CadastroConsultorScreen from './src/screens/CadastroConsultorScreen';
+import MeuPerfilScreen from './src/screens/MeuPerfilScreen';
 import EditarConsultorScreen from './src/screens/EditarConsultorScreen';
 import EmpresasScreen from './src/screens/EmpresasScreen';
 import CadastroEmpresaScreen from './src/screens/CadastroEmpresaScreen';
 import EditarEmpresaScreen from './src/screens/EditarEmpresaScreen';
+import RelatoriosScreen from './src/screens/RelatoriosScreen';
+import TextosPredefinidosScreen from './src/screens/TextosPredefinidosScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { RootDrawerParamList } from './src/types/navigation';
@@ -49,17 +50,6 @@ function CustomHeader({ navigation }: any) {
   );
 }
 
-// Cabeçalho padrão para outras telas (sem menu hambúrguer)
-function DefaultHeader() {
-  return (
-    <View style={styles.defaultHeader}>
-      <View style={styles.placeholderLeft} />
-      <Text style={styles.defaultHeaderTitle}>FACILITE</Text>
-      <View style={styles.placeholderRight} />
-    </View>
-  );
-}
-
 export default function App() {
   return (
     <>
@@ -72,6 +62,7 @@ export default function App() {
             drawerLabelStyle: { fontSize: 16, color: '#1A1A1A' },
             drawerActiveTintColor: '#2463EB',
             drawerInactiveTintColor: '#6C757D',
+            headerShown: false, // Desabilita cabeçalho global
           }}
         >
           <Drawer.Screen
@@ -81,22 +72,14 @@ export default function App() {
               title: 'FACILITE',
               drawerLabel: 'Início',
               header: (props: any) => <CustomHeader {...props} />,
-              headerShown: true,
+              headerShown: true, // Só a Home tem cabeçalho personalizado
             }}
           />
           <Drawer.Screen
-            name="Consultores"
-            component={ConsultoresScreen}
+            name="MeuPerfil"
+            component={MeuPerfilScreen}
             options={{
-              drawerLabel: 'Consultores',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="CadastroConsultor"
-            component={CadastroConsultorScreen}
-            options={{
-              drawerLabel: 'Cadastro Consultor',
+              drawerLabel: 'Meu Perfil',
               headerShown: false,
             }}
           />
@@ -104,7 +87,7 @@ export default function App() {
             name="EditarConsultor"
             component={EditarConsultorScreen}
             options={{
-              drawerLabel: 'Editar Consultor',
+              drawerLabel: 'Editar Perfil',
               headerShown: false,
             }}
           />
@@ -132,6 +115,22 @@ export default function App() {
               headerShown: false,
             }}
           />
+          <Drawer.Screen
+            name="Relatorios"
+            component={RelatoriosScreen}
+            options={{
+              drawerLabel: 'Relatórios',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="TextosPredefinidos"
+            component={TextosPredefinidosScreen}
+            options={{
+              drawerLabel: 'Textos Predefinidos',
+              headerShown: false,
+            }}
+          />
         </Drawer.Navigator>
       </NavigationContainer>
     </>
@@ -139,7 +138,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  // Estilos do cabeçalho personalizado (APENAS PARA HOME)
   customHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -178,26 +176,5 @@ const styles = StyleSheet.create({
   notificationIcon: { 
     fontSize: 24,
     color: '#6C757D',
-  },
-  // Estilos do cabeçalho padrão (para outras telas)
-  defaultHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: '#F8F9FC',
-  },
-  placeholderLeft: {
-    width: 44,
-  },
-  defaultHeaderTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-  },
-  placeholderRight: {
-    width: 44,
   },
 });

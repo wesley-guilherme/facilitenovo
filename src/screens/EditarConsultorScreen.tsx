@@ -199,7 +199,7 @@ export default function EditarConsultorScreen() {
             Alert.alert(
               'Sucesso',
               'Consultor excluído com sucesso!',
-              [{ text: 'OK', onPress: () => navigation.navigate('Consultores') }]
+              [{ text: 'OK', onPress: () => navigation.navigate('MeuPerfil') }]
             );
           }
         }
@@ -242,12 +242,12 @@ export default function EditarConsultorScreen() {
     Alert.alert(
       'Sucesso',
       'Consultor atualizado com sucesso!',
-      [{ text: 'OK', onPress: () => navigation.navigate('Consultores') }]
+      [{ text: 'OK', onPress: () => navigation.navigate('MeuPerfil') }]
     );
   };
 
   const handleCancelar = () => {
-    navigation.navigate('Consultores');
+    navigation.navigate('MeuPerfil');
   };
 
   // Switch com useMemo para evitar piscar

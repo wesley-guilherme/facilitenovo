@@ -7,12 +7,13 @@
 
 export type RootDrawerParamList = {
   Home: undefined;
-  Consultores: undefined;
-  CadastroConsultor: undefined;
-  EditarConsultor: { consultor: any };
+  MeuPerfil: undefined;
   Empresas: undefined;
   CadastroEmpresa: undefined;
   EditarEmpresa: { empresa: any};
+  EditarConsultor: { consultor: any };
+  Relatorios: undefined;
+  TextosPredefinidos: undefined;
   // Adicione outras telas futuramente:
   // Empresas: undefined;
   // Visitas: undefined;

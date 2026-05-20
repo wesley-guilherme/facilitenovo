@@ -11,7 +11,7 @@ import { RootDrawerParamList } from '../types/navigation';
 type HomeScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Home'>;
 
 const menuItems = [
-  { id: 'consultor', title: 'Cadastrar Consultor', icon: '👤' },
+  { id: 'perfil', title: 'Meu Perfil', icon: '👤' },
   { id: 'empresa', title: 'Cadastrar Empresa', icon: '🏢' },
   { id: 'visita', title: 'Visita In Loco', icon: '🏍️' },
   { id: 'relatorios', title: 'Relatórios', icon: '📊' },
@@ -22,10 +22,16 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
 const handleNavigate = (title: string) => {
-  if (title === 'Cadastrar Consultor') {
-    navigation.navigate('Consultores');
+  if (title === 'Meu Perfil') {
+    navigation.navigate('MeuPerfil');
   } else if (title === 'Cadastrar Empresa') {
     navigation.navigate('Empresas');
+  } else if (title === 'Relatórios') {
+    navigation.navigate('Relatorios');
+  } else if (title === 'Visita In Loco') {
+    Alert.alert('Em breve', 'Funcionalidade em desenvolvimento');
+  } else if (title === 'Textos Predefinidos') {
+    navigation.navigate('TextosPredefinidos');
   } else {
     Alert.alert('Navegação', `Ir para: ${title}`);
   }
