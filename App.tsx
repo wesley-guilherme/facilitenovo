@@ -15,8 +15,12 @@ import EditarEmpresaScreen from './src/screens/EditarEmpresaScreen';
 import RelatoriosScreen from './src/screens/RelatoriosScreen';
 import TextosPredefinidosScreen from './src/screens/TextosPredefinidosScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
+import { ConsultorProvider } from './src/contexts/ConsultorContext';
+import { EmpresaProvider } from './src/contexts/EmpresaContext';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { RootDrawerParamList } from './src/types/navigation';
+import EmpresaConsultorScreen from './src/screens/EmpresaConsultorScreen';
+import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
@@ -52,9 +56,10 @@ function CustomHeader({ navigation }: any) {
 
 export default function App() {
   return (
-    <>
+    <ConsultorProvider>
+     <EmpresaProvider>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
-      <NavigationContainer>
+       <NavigationContainer>
         <Drawer.Navigator
           drawerContent={(props: DrawerContentComponentProps) => <CustomDrawerContent {...props} />}
           screenOptions={{
@@ -131,9 +136,26 @@ export default function App() {
               headerShown: false,
             }}
           />
+          <Drawer.Screen
+            name="EmpresaConsultor"
+            component={EmpresaConsultorScreen}
+            options={{
+              drawerLabel: 'Minha Empresa',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="Configuracoes"
+            component={ConfiguracoesScreen}
+            options={{
+              drawerLabel: 'Configurações',
+              headerShown: false,
+            }}
+          />
         </Drawer.Navigator>
-      </NavigationContainer>
-    </>
+       </NavigationContainer>
+      </EmpresaProvider>
+     </ConsultorProvider>
   );
 }
 

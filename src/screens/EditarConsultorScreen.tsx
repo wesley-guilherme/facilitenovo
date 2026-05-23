@@ -12,7 +12,7 @@
  * - Excluir Cadastro (botão de ação)
  */
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -31,9 +31,10 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+import { useConsultor } from '../contexts/ConsultorContext';
 import * as ImagePicker from 'expo-image-picker';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -42,23 +43,9 @@ const HEADER_HEIGHT = 56;
 
 type EditarConsultorScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'EditarConsultor'>;
 
-// Tipo para os dados do consultor recebidos via parâmetro
-type ConsultorData = {
-  id: string;
-  nome: string;
-  email: string;
-  whatsapp: string;
-  rota: string;
-  foto: string | null;
-  desativado: boolean;
-};
-
 export default function EditarConsultorScreen() {
   const navigation = useNavigation<EditarConsultorScreenNavigationProp>();
-  const route = useRoute();
-  
-  // Recebe os dados do consultor via parâmetro de navegação
-  const consultor = (route.params as any)?.consultor as ConsultorData;
+  const { consultor: consultorContext, atualizarConsultor } = useConsultor();
   
   // Refs para os inputs
   const scrollViewRef = useRef<ScrollView>(null);
@@ -67,13 +54,13 @@ export default function EditarConsultorScreen() {
   const whatsappInputRef = useRef<TextInput>(null);
   const rotaInputRef = useRef<TextInput>(null);
 
-  // Estados do formulário (preenchidos com os dados do consultor)
-  const [foto, setFoto] = useState<string | null>(consultor?.foto || null);
-  const [nome, setNome] = useState(consultor?.nome || '');
-  const [email, setEmail] = useState(consultor?.email || '');
-  const [whatsapp, setWhatsapp] = useState(consultor?.whatsapp || '');
-  const [rota, setRota] = useState(consultor?.rota || '');
-  const [desativado, setDesativado] = useState(consultor?.desativado || false);
+  // Estados do formulário (preenchidos com os dados do consultor do contexto)
+  const [foto, setFoto] = useState<string | null>(consultorContext?.foto || null);
+  const [nome, setNome] = useState(consultorContext?.nome || '');
+  const [email, setEmail] = useState(consultorContext?.email || '');
+  const [whatsapp, setWhatsapp] = useState(consultorContext?.whatsapp || '');
+  const [rota, setRota] = useState(consultorContext?.rota || '');
+  const [desativado, setDesativado] = useState(!consultorContext?.ativo || false);
 
   // Estados de erro
   const [errors, setErrors] = useState({
@@ -195,7 +182,7 @@ export default function EditarConsultorScreen() {
           text: 'Excluir', 
           style: 'destructive',
           onPress: () => {
-            console.log('Consultor excluído:', consultor?.id);
+            console.log('Consultor excluído');
             Alert.alert(
               'Sucesso',
               'Consultor excluído com sucesso!',
@@ -226,22 +213,19 @@ export default function EditarConsultorScreen() {
       return;
     }
     
-    const consultorEditado = {
-      id: consultor?.id || Date.now().toString(),
+    // Atualizar o contexto com os novos dados
+    atualizarConsultor({
       nome,
       email,
       whatsapp,
       rota,
       foto,
-      desativado,
-      dataAtualizacao: new Date().toISOString(),
-    };
-    
-    console.log('Consultor atualizado:', consultorEditado);
+      ativo: !desativado,
+    });
     
     Alert.alert(
       'Sucesso',
-      'Consultor atualizado com sucesso!',
+      'Perfil atualizado com sucesso!',
       [{ text: 'OK', onPress: () => navigation.navigate('MeuPerfil') }]
     );
   };
@@ -264,12 +248,12 @@ export default function EditarConsultorScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* Cabeçalho com título "Editar Consultor" */}
+      {/* Cabeçalho com título "Editar Perfil" */}
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Editar Consultor</Text>
+        <Text style={styles.headerTitle}>Editar Perfil</Text>
         <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
           <Text style={styles.saveText}>Salvar</Text>
         </TouchableOpacity>

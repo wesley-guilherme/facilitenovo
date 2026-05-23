@@ -1,3 +1,4 @@
+import { EmpresaConsultor } from './../contexts/EmpresaContext';
 /**
  * TIPAGEM DAS ROTAS DO DRAWER
  * 
@@ -14,6 +15,8 @@ export type RootDrawerParamList = {
   EditarConsultor: { consultor: any };
   Relatorios: undefined;
   TextosPredefinidos: undefined;
+  EmpresaConsultor: undefined;
+  Configuracoes: undefined;
   // Adicione outras telas futuramente:
   // Empresas: undefined;
   // Visitas: undefined;

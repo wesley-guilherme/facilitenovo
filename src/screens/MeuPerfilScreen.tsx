@@ -24,6 +24,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+import { useConsultor } from '../contexts/ConsultorContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -44,7 +45,7 @@ const CONSULTOR_LOGADO = {
 
 export default function MeuPerfilScreen() {
   const navigation = useNavigation<MeuPerfilScreenNavigationProp>();
-  const [consultor, setConsultor] = useState(CONSULTOR_LOGADO);
+  const { consultor } = useConsultor();
 
   const handleEditarPerfil = () => {
     navigation.navigate('EditarConsultor', { consultor });
@@ -99,7 +100,6 @@ export default function MeuPerfilScreen() {
 
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📱 WhatsApp</Text>
-            <Text style={styles.infoValue}>{consultor.telefone}</Text>
           </View>
 
           <View style={styles.infoCard}>
