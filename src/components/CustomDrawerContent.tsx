@@ -98,7 +98,10 @@ export default function CustomDrawerContent(props: any) {
         
         <TouchableOpacity 
           style={styles.footerItem}
-          // onPress={() => Linking.openURL('mailto:contato@facilite.com')}
+          onPress={() => {
+            navigation.navigate('FaleConosco');
+            props.navigation.closeDrawer();
+          }}
         >
           <Text style={styles.footerIcon}>💬</Text>
           <Text style={styles.footerText}>Fale Conosco</Text>

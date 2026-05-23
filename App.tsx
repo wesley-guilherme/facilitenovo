@@ -21,6 +21,7 @@ import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { RootDrawerParamList } from './src/types/navigation';
 import EmpresaConsultorScreen from './src/screens/EmpresaConsultorScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
+import FaleConoscoScreen from './src/screens/FaleConoscoScreen';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
@@ -149,6 +150,14 @@ export default function App() {
             component={ConfiguracoesScreen}
             options={{
               drawerLabel: 'Configurações',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="FaleConosco"
+            component={FaleConoscoScreen}
+            options={{
+              drawerLabel: 'Fale Conosco',
               headerShown: false,
             }}
           />

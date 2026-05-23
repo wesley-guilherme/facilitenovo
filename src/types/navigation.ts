@@ -17,6 +17,7 @@ export type RootDrawerParamList = {
   TextosPredefinidos: undefined;
   EmpresaConsultor: undefined;
   Configuracoes: undefined;
+  FaleConosco: undefined;
   // Adicione outras telas futuramente:
   // Empresas: undefined;
   // Visitas: undefined;

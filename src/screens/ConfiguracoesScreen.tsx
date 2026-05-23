@@ -2,14 +2,14 @@
  * TELA: ConfiguracoesScreen
  * 
  * FUNÇÃO:
- * Permite configurar as preferências do aplicativo:
- * - Dias para aviso de nova visita
- * - Pasta do Google Drive para anexar formulários
- * - Pasta para backup dos dados
- * - Pasta para restaurar backup
+ * Configurações do aplicativo para o consultor:
+ * - Aviso de Visita (dias para próxima visita)
+ * - Backup (compartilhar via share nativo)
+ * - Restaurar Dados (navegar e selecionar arquivo de backup)
+ * - Dados (informações de armazenamento local)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,40 +21,79 @@ import {
   StatusBar,
   ScrollView,
   Switch,
+  ActivityIndicator,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-import * as FileSystem from 'expo-file-system';
-import NavegadorDePastas from '../components/NavegadorDePastas';
+import { Directory, File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
+import * as SQLite from 'expo-sqlite';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
 type ConfiguracoesScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Configuracoes'>;
 
-// Dados das configurações (mockados - depois conectar com AsyncStorage/SQLite)
+// Dados das configurações
 const CONFIG_INICIAL = {
   diasAviso: '30',
-  pastaDrive: '/storage/emulated/0/Documents',
-  pastaBackup: '/storage/emulated/0/Documents/Backup',
-  pastaRestore: '/storage/emulated/0/Documents/Restore',
   notificacoesAtivas: true,
 };
 
 export default function ConfiguracoesScreen() {
   const navigation = useNavigation<ConfiguracoesScreenNavigationProp>();
+  const db = SQLite.openDatabaseSync('facilite.db');
   
   const [diasAviso, setDiasAviso] = useState(CONFIG_INICIAL.diasAviso);
-  const [pastaDrive, setPastaDrive] = useState(CONFIG_INICIAL.pastaDrive);
-  const [pastaBackup, setPastaBackup] = useState(CONFIG_INICIAL.pastaBackup);
-  const [pastaRestore, setPastaRestore] = useState(CONFIG_INICIAL.pastaRestore);
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(CONFIG_INICIAL.notificacoesAtivas);
-  
-  // Estado para controlar o modal do navegador de pastas
-  const [navegadorVisible, setNavegadorVisible] = useState(false);
-  const [tipoSelecao, setTipoSelecao] = useState<'drive' | 'backup' | 'restore'>('drive');
+  const [loading, setLoading] = useState(false);
+  const [quantidadeOSs, setQuantidadeOSs] = useState(0);
+  const [tamanhoBanco, setTamanhoBanco] = useState('0 KB');
+
+  // Carregar informações dos dados
+  useEffect(() => {
+    carregarInfoDados();
+  }, []);
+
+ const carregarInfoDados = async () => {
+  try {
+    // Tentar contar OSs - se a tabela não existir, retorna 0
+    let total = 0;
+    try {
+      const result = await db.getAllAsync('SELECT COUNT(*) as total FROM os_assinadas');
+      total = (result as any[])[0]?.total || 0;
+    } catch (tableError) {
+      // Tabela ainda não existe - ignorar
+      console.log('Tabela os_assinadas ainda não criada');
+      total = 0;
+    }
+    setQuantidadeOSs(total);
+    
+    // Verificar tamanho do banco (apenas se o arquivo existe)
+    const dbPath = `${Paths.document.uri}SQLite/facilite.db`;
+    const dbFile = new File(dbPath);
+    
+    if (dbFile.exists) {
+      const info = await dbFile.info();
+      if (info.size) {
+        const tamanhoKB = (info.size / 1024).toFixed(1);
+        setTamanhoBanco(`${tamanhoKB} KB`);
+      } else {
+        setTamanhoBanco('0 KB');
+      }
+    } else {
+      setTamanhoBanco('0 KB');
+    }
+  } catch (error) {
+    console.error('Erro ao carregar informações:', error);
+    setQuantidadeOSs(0);
+    setTamanhoBanco('0 KB');
+  }
+};
 
   const handleVoltar = () => {
     navigation.goBack();
@@ -69,9 +108,6 @@ export default function ConfiguracoesScreen() {
 
     const configuracoes = {
       diasAviso,
-      pastaDrive,
-      pastaBackup,
-      pastaRestore,
       notificacoesAtivas,
     };
     
@@ -79,99 +115,134 @@ export default function ConfiguracoesScreen() {
     Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
   };
 
-  // Abrir o navegador de pastas
-  const abrirNavegador = (tipo: 'drive' | 'backup' | 'restore') => {
-    setTipoSelecao(tipo);
-    setNavegadorVisible(true);
-  };
-
-  // Selecionar pasta no navegador
-  const selecionarPasta = (caminho: string) => {
-    switch (tipoSelecao) {
-      case 'drive':
-        setPastaDrive(caminho);
-        break;
-      case 'backup':
-        setPastaBackup(caminho);
-        break;
-      case 'restore':
-        setPastaRestore(caminho);
-        break;
-    }
-  };
-
-  // Verificar se a pasta existe
-  const verificarPasta = async (caminho: string): Promise<boolean> => {
+  // ==================== BACKUP ====================
+  const fazerBackup = async () => {
+    setLoading(true);
     try {
-      const info = await FileSystem.getInfoAsync(caminho);
-      return info.exists && info.isDirectory;
+      // 1. Buscar todos os dados do SQLite
+      const tabelas = ['os_assinadas', 'consultores', 'empresas'];
+      const backupData: any = {};
+      
+      for (const tabela of tabelas) {
+        try {
+          const dados = await db.getAllAsync(`SELECT * FROM ${tabela}`);
+          backupData[tabela] = dados;
+        } catch (error) {
+          backupData[tabela] = [];
+        }
+      }
+      
+      // 2. Criar arquivo JSON com os dados
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const backupPath = `${Paths.cache.uri}backup_facilite_${Date.now()}.json`;
+      const backupFile = new File(backupPath);
+      
+      await backupFile.write(jsonString);
+      
+      // 3. Verificar se o compartilhamento está disponível
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Erro', 'Compartilhamento não disponível neste dispositivo');
+        return;
+      }
+      
+      // 4. Compartilhar o arquivo
+      await Sharing.shareAsync(backupPath, {
+        mimeType: 'application/json',
+        dialogTitle: 'Salvar Backup - FACILITE',
+        UTI: 'public.json',
+      });
+      
+      // 5. Limpar arquivo temporário
+      await backupFile.delete();
+      
+      Alert.alert('Backup concluído', 'Os dados foram exportados com sucesso!');
+      
     } catch (error) {
-      return false;
+      console.error('Erro ao fazer backup:', error);
+      Alert.alert('Erro', 'Não foi possível fazer o backup');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleFazerBackup = async () => {
-    const existe = await verificarPasta(pastaBackup);
-    if (!existe) {
+  // ==================== RESTAURAR DADOS ====================
+  const restaurarBackup = async () => {
+    setLoading(true);
+    try {
+      // 1. Abrir seletor de arquivos
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+      
+      if (result.canceled) {
+        setLoading(false);
+        return;
+      }
+      
+      const arquivoSelecionado = result.assets[0];
+      
+      // 2. Ler o conteúdo do arquivo
+      const arquivo = new File(arquivoSelecionado.uri);
+      const conteudo = await arquivo.text();
+      const backupData = JSON.parse(conteudo);
+      
+      // 3. Confirmar restauração
       Alert.alert(
-        'Pasta não encontrada',
-        `A pasta "${pastaBackup}" não existe. Deseja criá-la?`,
+        'Restaurar Backup',
+        'Esta ação substituirá todos os dados atuais. Tem certeza?',
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
           {
-            text: 'Criar Pasta',
+            text: 'Restaurar',
+            style: 'destructive',
             onPress: async () => {
               try {
-                await FileSystem.makeDirectoryAsync(pastaBackup, { intermediates: true });
-                Alert.alert('Sucesso', 'Pasta criada! Faça o backup novamente.');
-              } catch (error) {
-                Alert.alert('Erro', 'Não foi possível criar a pasta');
+                // 4. Restaurar cada tabela
+                for (const [tabela, dados] of Object.entries(backupData)) {
+                  if (Array.isArray(dados) && dados.length > 0) {
+                    try {
+                      await db.execAsync(`DELETE FROM ${tabela}`);
+                      
+                      for (const item of dados as any[]) {
+                        const colunas = Object.keys(item).join(', ');
+                        const valores = Object.values(item).map((v: any) => {
+                          if (typeof v === 'string') {
+                            return `'${v.replace(/'/g, "''")}'`;
+                          }
+                          if (v === null || v === undefined) {
+                            return 'NULL';
+                          }
+                          return v;
+                        }).join(', ');
+                        
+                        await db.execAsync(`INSERT INTO ${tabela} (${colunas}) VALUES (${valores})`);
+                      }
+                    } catch (error) {
+                      console.error(`Erro ao restaurar tabela ${tabela}:`, error);
+                    }
+                  }
+                }
+                
+                await carregarInfoDados();
+                Alert.alert('Sucesso', 'Dados restaurados com sucesso!');
+              } catch (restoreError) {
+                console.error('Erro na restauração:', restoreError);
+                Alert.alert('Erro', 'Falha ao restaurar os dados');
+              } finally {
+                setLoading(false);
               }
-            }
-          }
+            },
+          },
         ]
       );
-      return;
+      
+    } catch (error) {
+      console.error('Erro ao restaurar backup:', error);
+      Alert.alert('Erro', 'Não foi possível ler o arquivo de backup');
+      setLoading(false);
     }
-
-    Alert.alert(
-      'Backup',
-      'Deseja fazer backup de todos os dados do aplicativo?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Fazer Backup', 
-          onPress: () => {
-            console.log('Backup realizado para:', pastaBackup);
-            Alert.alert('Sucesso', 'Backup realizado com sucesso!');
-          }
-        }
-      ]
-    );
-  };
-
-  const handleRestaurarBackup = async () => {
-    const existe = await verificarPasta(pastaRestore);
-    if (!existe) {
-      Alert.alert('Erro', `A pasta "${pastaRestore}" não existe. Verifique o caminho.`);
-      return;
-    }
-
-    Alert.alert(
-      'Restaurar Backup',
-      'Deseja restaurar os dados do backup? Esta ação substituirá todos os dados atuais.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Restaurar', 
-          style: 'destructive',
-          onPress: () => {
-            console.log('Restauração de:', pastaRestore);
-            Alert.alert('Sucesso', 'Backup restaurado com sucesso!');
-          }
-        }
-      ]
-    );
   };
 
   return (
@@ -225,87 +296,75 @@ export default function ConfiguracoesScreen() {
           </View>
         </View>
 
-        {/* Seção: Pastas do Sistema */}
+        {/* Seção: Backup */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📁 Pastas do Sistema</Text>
+          <Text style={styles.sectionTitle}>💾 Backup</Text>
           <Text style={styles.sectionDescription}>
-            Clique no botão "Selecionar" para navegar e escolher a pasta
+            Exporte seus dados para fazer backup. O arquivo será gerado e você escolhe onde salvar.
           </Text>
-
-          {/* Pasta para anexar formulários */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Pasta para anexar formulários</Text>
-            <TouchableOpacity 
-              style={styles.pastaButton}
-              onPress={() => abrirNavegador('drive')}
-            >
-              <Text style={styles.pastaButtonIcon}>📁</Text>
-              <Text style={styles.pastaButtonText} numberOfLines={1}>
-                {pastaDrive || 'Selecionar pasta'}
-              </Text>
-              <Text style={styles.pastaButtonArrow}>›</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Pasta de Backup */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Pasta de Backup</Text>
-            <TouchableOpacity 
-              style={styles.pastaButton}
-              onPress={() => abrirNavegador('backup')}
-            >
-              <Text style={styles.pastaButtonIcon}>💾</Text>
-              <Text style={styles.pastaButtonText} numberOfLines={1}>
-                {pastaBackup || 'Selecionar pasta'}
-              </Text>
-              <Text style={styles.pastaButtonArrow}>›</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleFazerBackup}>
-              <Text style={styles.actionButtonText}>📂 Fazer Backup Agora</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Pasta para Restaurar Backup */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Pasta para Restaurar Backup</Text>
-            <TouchableOpacity 
-              style={styles.pastaButton}
-              onPress={() => abrirNavegador('restore')}
-            >
-              <Text style={styles.pastaButtonIcon}>🔄</Text>
-              <Text style={styles.pastaButtonText} numberOfLines={1}>
-                {pastaRestore || 'Selecionar pasta'}
-              </Text>
-              <Text style={styles.pastaButtonArrow}>›</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.actionButtonDanger]} 
-              onPress={handleRestaurarBackup}
-            >
-              <Text style={styles.actionButtonDangerText}>🔄 Restaurar Backup</Text>
-            </TouchableOpacity>
-          </View>
+          
+          <TouchableOpacity 
+            style={styles.backupButton} 
+            onPress={fazerBackup}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.backupButtonIcon}>📤</Text>
+                <Text style={styles.backupButtonText}>Fazer Backup Agora</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Seção: Informações */}
+        {/* Seção: Restaurar Dados */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ℹ️ Informações</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoText}>Versão do App: 1.0.0</Text>
-            <Text style={styles.infoText}>Último backup: 19/05/2026</Text>
-            <Text style={styles.infoText}>Próxima verificação: Automática</Text>
+          <Text style={styles.sectionTitle}>🔄 Restaurar Dados</Text>
+          <Text style={styles.sectionDescription}>
+            Selecione um arquivo de backup para restaurar seus dados.
+          </Text>
+          
+          <TouchableOpacity 
+            style={styles.restoreButton} 
+            onPress={restaurarBackup}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#2463EB" />
+            ) : (
+              <>
+                <Text style={styles.restoreButtonIcon}>📂</Text>
+                <Text style={styles.restoreButtonText}>Selecionar Backup</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          
+          <Text style={styles.notaText}>
+            * O backup deve ser um arquivo JSON gerado pelo próprio aplicativo
+          </Text>
+        </View>
+
+        {/* Seção: Dados */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🗄️ Dados</Text>
+          
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>OSs armazenadas</Text>
+            <Text style={styles.infoValue}>{quantidadeOSs}</Text>
           </View>
+          
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Tamanho do banco de dados</Text>
+            <Text style={styles.infoValue}>{tamanhoBanco}</Text>
+          </View>
+          
+          <Text style={styles.notaText}>
+            Os dados ficam armazenados localmente no seu dispositivo.
+          </Text>
         </View>
       </ScrollView>
-
-      {/* Navegador de Pastas */}
-      <NavegadorDePastas
-        visible={navegadorVisible}
-        onClose={() => setNavegadorVisible(false)}
-        onSelect={selecionarPasta}
-        titulo="Selecionar Pasta"
-        caminhoInicial="/storage/emulated/0"
-      />
     </SafeAreaView>
   );
 }
@@ -415,60 +474,66 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1A1A1A',
   },
-  pastaButton: {
+  backupButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FC',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  pastaButtonIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  pastaButtonText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#1A1A1A',
-  },
-  pastaButtonArrow: {
-    fontSize: 20,
-    color: '#ADB5BD',
-    marginLeft: 8,
-  },
-  actionButton: {
+    justifyContent: 'center',
     backgroundColor: '#2463EB',
     borderRadius: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  backupButtonIcon: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    marginRight: 8,
+  },
+  backupButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  restoreButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  actionButtonDanger: {
-    backgroundColor: '#FF3B30',
-  },
-  actionButtonDangerText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  infoCard: {
+    justifyContent: 'center',
     backgroundColor: '#F8F9FC',
     borderRadius: 10,
-    padding: 12,
+    paddingVertical: 12,
+    marginTop: 8,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: '#2463EB',
   },
-  infoText: {
-    fontSize: 13,
-    color: '#4A4A4A',
-    marginBottom: 4,
+  restoreButtonIcon: {
+    fontSize: 18,
+    color: '#2463EB',
+    marginRight: 8,
+  },
+  restoreButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2463EB',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#6C757D',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  notaText: {
+    fontSize: 11,
+    color: '#ADB5BD',
+    marginTop: 12,
+    lineHeight: 16,
   },
 });

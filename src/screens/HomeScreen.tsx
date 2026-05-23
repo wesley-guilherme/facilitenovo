@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native'; // ← CORRETO: vem do
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 
+
 type HomeScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Home'>;
 
 const menuItems = [
