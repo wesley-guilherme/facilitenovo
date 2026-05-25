@@ -12,6 +12,7 @@ import EditarConsultorScreen from './src/screens/EditarConsultorScreen';
 import EmpresasScreen from './src/screens/EmpresasScreen';
 import CadastroEmpresaScreen from './src/screens/CadastroEmpresaScreen';
 import EditarEmpresaScreen from './src/screens/EditarEmpresaScreen';
+import VisitasScreen from './src/screens/VisitasScreen';
 import RelatoriosScreen from './src/screens/RelatoriosScreen';
 import TextosPredefinidosScreen from './src/screens/TextosPredefinidosScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
@@ -22,6 +23,7 @@ import { RootDrawerParamList } from './src/types/navigation';
 import EmpresaConsultorScreen from './src/screens/EmpresaConsultorScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
 import FaleConoscoScreen from './src/screens/FaleConoscoScreen';
+
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
@@ -158,6 +160,14 @@ export default function App() {
             component={FaleConoscoScreen}
             options={{
               drawerLabel: 'Fale Conosco',
+              headerShown: false,
+            }}
+          />
+          <Drawer.Screen
+            name="Visitas"
+            component={VisitasScreen}
+            options={{
+              drawerLabel: 'Visitas',
               headerShown: false,
             }}
           />

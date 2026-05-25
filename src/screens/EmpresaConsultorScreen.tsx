@@ -176,10 +176,11 @@ export default function EmpresaConsultorScreen() {
     }
   };
 
+  // CORREÇÃO: Função para excluir a imagem (sem o X sobreposto)
   const handleExcluirImagem = (tipo: 'pequena' | 'media') => {
     Alert.alert(
       'Excluir Imagem',
-      'Tem certeza que deseja remover esta imagem?',
+      `Tem certeza que deseja remover a ${tipo === 'pequena' ? 'logo pequena' : 'marca d\'água'}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
@@ -248,7 +249,7 @@ export default function EmpresaConsultorScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
@@ -261,16 +262,16 @@ export default function EmpresaConsultorScreen() {
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + STATUS_BAR_HEIGHT + 20 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + 50 + 20 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT + STATUS_BAR_HEIGHT + 16 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT + (Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT) + 16 }]}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Logo Pequena */}
+            {/* Logo Pequena - SEM O X SOBREPOSTO */}
             <View style={styles.logoSection}>
               <Text style={styles.sectionTitle}>Logo Pequena</Text>
               <TouchableOpacity 
@@ -279,15 +280,7 @@ export default function EmpresaConsultorScreen() {
                 activeOpacity={0.7}
               >
                 {logoPequena ? (
-                  <>
-                    <Image source={{ uri: logoPequena }} style={styles.logoPequena} />
-                    <TouchableOpacity 
-                      style={styles.deleteLogoButton} 
-                      onPress={() => handleExcluirImagem('pequena')}
-                    >
-                      <Text style={styles.deleteLogoText}>✕</Text>
-                    </TouchableOpacity>
-                  </>
+                  <Image source={{ uri: logoPequena }} style={styles.logoPequena} />
                 ) : (
                   <View style={styles.logoPlaceholder}>
                     <Text style={styles.logoPlaceholderIcon}>🖼️</Text>
@@ -295,9 +288,15 @@ export default function EmpresaConsultorScreen() {
                   </View>
                 )}
               </TouchableOpacity>
+              {/* CORREÇÃO: Botão "Excluir Foto" abaixo da imagem */}
+              {logoPequena && (
+                <TouchableOpacity onPress={() => handleExcluirImagem('pequena')} style={styles.excluirButton}>
+                  <Text style={styles.excluirButtonText}>Excluir Logo</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
-            {/* Logo Média (Marca d'água) */}
+            {/* Logo Média (Marca d'água) - SEM O X SOBREPOSTO */}
             <View style={styles.logoSection}>
               <Text style={styles.sectionTitle}>Logo Marca d'Água</Text>
               <TouchableOpacity 
@@ -306,22 +305,20 @@ export default function EmpresaConsultorScreen() {
                 activeOpacity={0.7}
               >
                 {logoMedia ? (
-                  <>
-                    <Image source={{ uri: logoMedia }} style={styles.logoMedia} />
-                    <TouchableOpacity 
-                      style={styles.deleteLogoButton} 
-                      onPress={() => handleExcluirImagem('media')}
-                    >
-                      <Text style={styles.deleteLogoText}>✕</Text>
-                    </TouchableOpacity>
-                  </>
+                  <Image source={{ uri: logoMedia }} style={styles.logoMedia} />
                 ) : (
                   <View style={styles.logoPlaceholderMedia}>
                     <Text style={styles.logoPlaceholderIcon}>🌊</Text>
-                    <Text style={styles.logoPlaceholderText}>Adicionar Marca d\'Água</Text>
+                    <Text style={styles.logoPlaceholderText}>Adicionar Marca d'Água</Text>
                   </View>
                 )}
               </TouchableOpacity>
+              {/* CORREÇÃO: Botão "Excluir Foto" abaixo da imagem */}
+              {logoMedia && (
+                <TouchableOpacity onPress={() => handleExcluirImagem('media')} style={styles.excluirButton}>
+                  <Text style={styles.excluirButtonText}>Excluir Marca d'Água</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.form}>
@@ -479,10 +476,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -491,6 +484,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FC',
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
     zIndex: 10,
   },
   backButton: {
@@ -539,7 +537,6 @@ const styles = StyleSheet.create({
     borderColor: '#E9ECEF',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
   logoContainerMedia: {
     width: 120,
@@ -551,7 +548,6 @@ const styles = StyleSheet.create({
     borderColor: '#E9ECEF',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
   logoPequena: {
     width: 80,
@@ -577,21 +573,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#6C757D',
   },
-  deleteLogoButton: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+  // CORREÇÃO: Estilo do botão excluir
+  excluirButton: {
+    marginTop: 8,
   },
-  deleteLogoText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  excluirButtonText: {
+    fontSize: 12,
+    color: '#FF3B30',
+    fontWeight: '500',
   },
   form: {
     paddingHorizontal: 16,

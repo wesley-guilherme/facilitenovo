@@ -30,7 +30,7 @@ const handleNavigate = (title: string) => {
   } else if (title === 'Relatórios') {
     navigation.navigate('Relatorios');
   } else if (title === 'Visita In Loco') {
-    Alert.alert('Em breve', 'Funcionalidade em desenvolvimento');
+    navigation.navigate('Visitas');
   } else if (title === 'Textos Predefinidos') {
     navigation.navigate('TextosPredefinidos');
   } else {
