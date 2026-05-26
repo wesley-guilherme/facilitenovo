@@ -9,7 +9,7 @@
  * - Excluir texto (ícone de lixeira)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,12 @@ import {
   Modal,
   TextInput,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+import * as SQLite from 'expo-sqlite';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -37,19 +39,43 @@ type TextoPredefinido = {
   texto: string;
 };
 
-// Dados mockados (apenas texto)
-const MOCK_TEXTOS: TextoPredefinido[] = [
-  { id: '1', texto: 'Visita de rotina realizada conforme planejamento.' },
-  { id: '2', texto: 'Visita solicitada pelo cliente para atendimento emergencial.' },
-  { id: '3', texto: 'Atualização do sistema realizada para a versão mais recente.' },
-];
-
 export default function TextosPredefinidosScreen() {
   const navigation = useNavigation<TextosPredefinidosScreenNavigationProp>();
-  const [textos, setTextos] = useState<TextoPredefinido[]>(MOCK_TEXTOS);
+  const db = SQLite.openDatabaseSync('facilite.db');
+  
+  const [textos, setTextos] = useState<TextoPredefinido[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTexto, setEditingTexto] = useState<TextoPredefinido | null>(null);
   const [formTexto, setFormTexto] = useState('');
+
+  // Carregar textos do banco de dados (com tratamento de erro)
+  const carregarTextos = async () => {
+    setLoading(true);
+    try {
+      let textosDb: TextoPredefinido[] = [];
+      try {
+        const result = await db.getAllAsync('SELECT * FROM textos_predefinidos ORDER BY texto ASC');
+        textosDb = result as TextoPredefinido[];
+      } catch (tableError) {
+        console.log('Tabela textos_predefinidos não encontrada');
+        textosDb = [];
+      }
+      setTextos(textosDb);
+    } catch (error) {
+      console.error('Erro ao carregar textos:', error);
+      setTextos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Recarregar quando a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      carregarTextos();
+    }, [])
+  );
 
   const handleVoltar = () => {
     navigation.goBack();
@@ -67,33 +93,37 @@ export default function TextosPredefinidosScreen() {
     setModalVisible(true);
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     if (formTexto.trim() === '') {
       Alert.alert('Erro', 'Digite um texto');
       return;
     }
 
-    if (editingTexto) {
-      // Editar texto existente
-      const textosAtualizados = textos.map(item =>
-        item.id === editingTexto.id
-          ? { ...item, texto: formTexto }
-          : item
-      );
-      setTextos(textosAtualizados);
-      Alert.alert('Sucesso', 'Texto atualizado com sucesso!');
-    } else {
-      // Adicionar novo texto
-      const novoTexto: TextoPredefinido = {
-        id: Date.now().toString(),
-        texto: formTexto,
-      };
-      setTextos([novoTexto, ...textos]);
-      Alert.alert('Sucesso', 'Texto adicionado com sucesso!');
+    try {
+      if (editingTexto) {
+        // Editar texto existente
+        await db.runAsync(
+          'UPDATE textos_predefinidos SET texto = ?, updatedAt = ? WHERE id = ?',
+          [formTexto, new Date().toISOString(), editingTexto.id]
+        );
+        Alert.alert('Sucesso', 'Texto atualizado com sucesso!');
+      } else {
+        // Adicionar novo texto
+        const novoId = Date.now().toString();
+        await db.runAsync(
+          'INSERT INTO textos_predefinidos (id, texto, createdAt) VALUES (?, ?, ?)',
+          [novoId, formTexto, new Date().toISOString()]
+        );
+        Alert.alert('Sucesso', 'Texto adicionado com sucesso!');
+      }
+      setModalVisible(false);
+      setFormTexto('');
+      setEditingTexto(null);
+      carregarTextos(); // Recarregar lista
+    } catch (error) {
+      console.error('Erro ao salvar texto:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o texto');
     }
-    setModalVisible(false);
-    setFormTexto('');
-    setEditingTexto(null);
   };
 
   const handleExcluir = (item: TextoPredefinido) => {
@@ -105,10 +135,15 @@ export default function TextosPredefinidosScreen() {
         {
           text: 'Excluir',
           style: 'destructive',
-          onPress: () => {
-            const textosFiltrados = textos.filter(t => t.id !== item.id);
-            setTextos(textosFiltrados);
-            Alert.alert('Sucesso', 'Texto excluído com sucesso!');
+          onPress: async () => {
+            try {
+              await db.runAsync('DELETE FROM textos_predefinidos WHERE id = ?', [item.id]);
+              Alert.alert('Sucesso', 'Texto excluído com sucesso!');
+              carregarTextos(); // Recarregar lista
+            } catch (error) {
+              console.error('Erro ao excluir texto:', error);
+              Alert.alert('Erro', 'Não foi possível excluir o texto');
+            }
           },
         },
       ]
@@ -150,16 +185,18 @@ export default function TextosPredefinidosScreen() {
       </View>
 
       {/* Lista de Textos */}
-      {textos.length === 0 ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2463EB" />
+          <Text style={styles.loadingText}>Carregando textos...</Text>
+        </View>
+      ) : textos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>📝</Text>
           <Text style={styles.emptyText}>Nenhum texto predefinido</Text>
           <Text style={styles.emptySubtext}>
             Toque no botão + para adicionar
           </Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={openAddModal}>
-            <Text style={styles.emptyButtonText}>+ Adicionar Texto</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -323,6 +360,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 80,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6C757D',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -343,17 +391,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6C757D',
     marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#2463EB',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  emptyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    textAlign: 'center',
   },
   // Modal styles
   modalOverlay: {

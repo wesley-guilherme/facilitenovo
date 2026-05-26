@@ -19,8 +19,9 @@ export type RootDrawerParamList = {
   Configuracoes: undefined;
   FaleConosco: undefined;
   Visitas: undefined;
-  NovaVisita: undefined;
+  NovaVisita: { empresa?: any};
   DetalhesVisita: { empresa: any; visita: any}
+
   // Adicione outras telas futuramente:
   // Empresas: undefined;
   // Visitas: undefined;

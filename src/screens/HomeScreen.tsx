@@ -1,13 +1,18 @@
 /**
  * TELA: HomeScreen (Tela Inicial)
+ * 
+ * FUNÇÃO:
+ * Exibe a tela principal do aplicativo com os cards de navegação.
+ * - Boas-vindas com o nome do consultor logado (do contexto)
+ * - Cards para acessar as funcionalidades
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native'; // ← CORRETO: vem do native, não do drawer
+import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-
+import { useConsultor } from '../contexts/ConsultorContext';
 
 type HomeScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Home'>;
 
@@ -21,27 +26,33 @@ const menuItems = [
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { consultor } = useConsultor();
 
-const handleNavigate = (title: string) => {
-  if (title === 'Meu Perfil') {
-    navigation.navigate('MeuPerfil');
-  } else if (title === 'Cadastrar Empresa') {
-    navigation.navigate('Empresas');
-  } else if (title === 'Relatórios') {
-    navigation.navigate('Relatorios');
-  } else if (title === 'Visita In Loco') {
-    navigation.navigate('Visitas');
-  } else if (title === 'Textos Predefinidos') {
-    navigation.navigate('TextosPredefinidos');
-  } else {
-    Alert.alert('Navegação', `Ir para: ${title}`);
-  }
-};
+  // Obter o nome do consultor do contexto (ou usar fallback)
+  const nomeConsultor = consultor?.nome && consultor.nome.trim() !== '' 
+    ? consultor.nome 
+    : 'Consultor';
+
+  const handleNavigate = (title: string) => {
+    if (title === 'Meu Perfil') {
+      navigation.navigate('MeuPerfil');
+    } else if (title === 'Cadastrar Empresa') {
+      navigation.navigate('Empresas');
+    } else if (title === 'Relatórios') {
+      navigation.navigate('Relatorios');
+    } else if (title === 'Visita In Loco') {
+      navigation.navigate('Visitas');
+    } else if (title === 'Textos Predefinidos') {
+      navigation.navigate('TextosPredefinidos');
+    } else {
+      Alert.alert('Navegação', `Ir para: ${title}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.welcomeArea}>
-        <Text style={styles.welcomeText}>Olá, João!</Text>
+        <Text style={styles.welcomeText}>Olá, {nomeConsultor}!</Text>
         <Text style={styles.subtitleText}>O que deseja fazer hoje?</Text>
       </View>
 

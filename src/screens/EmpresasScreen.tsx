@@ -2,14 +2,14 @@
  * TELA: EmpresasScreen
  * 
  * FUNÇÃO:
- * Exibe a lista de empresas cadastradas.
+ * Exibe a lista de empresas cadastradas no banco de dados.
  * - Pesquisa automática por código de referência ou nome fantasia
  * - Clique no card → Exibe detalhes (Alert)
  * - Clique na seta (✎) → Abre tela de edição
  * - Botão Voltar no cabeçalho
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,10 +26,12 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+import * as SQLite from 'expo-sqlite';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -39,74 +41,59 @@ type EmpresasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'E
 // Tipo para os dados da empresa
 type Empresa = {
   id: string;
-  codigoReferencia: string;    // Código de referência da empresa
-  nomeFantasia: string;         // Nome fantasia
-  proprietario: string;         // Proprietário
-  cidade: string;               // Cidade
-  endereco: string;             // Endereço
-  numero: string;               // Número
-  email: string;                // E-mail
-  contato: string;              // Contato (telefone)
-  anotacoes: string;            // Anotações
-  logo: string | null;          // Logo da empresa
-  ativo: boolean;               // Status ativo/desativado
+  codigoReferencia: string;
+  nomeFantasia: string;
+  proprietario: string;
+  cidade: string;
+  endereco: string;
+  numero: string;
+  email: string;
+  contato: string;
+  anotacoes: string;
+  logo: string | null;
+  ativo: number; // 1 = ativo, 0 = inativo
 };
-
-// Dados mockados (exemplo)
-const MOCK_EMPRESAS: Empresa[] = [
-  {
-    id: '1',
-    codigoReferencia: 'EMP001',
-    nomeFantasia: 'Tech Solutions',
-    proprietario: 'João Silva',
-    cidade: 'São Paulo',
-    endereco: 'Rua das Tecnologias',
-    numero: '123',
-    email: 'contato@techsolutions.com',
-    contato: '(11) 99999-1111',
-    anotacoes: 'Empresa especializada em soluções de TI',
-    logo: null,
-    ativo: true,
-  },
-  {
-    id: '2',
-    codigoReferencia: 'EMP002',
-    nomeFantasia: 'InovaTech',
-    proprietario: 'Maria Oliveira',
-    cidade: 'Rio de Janeiro',
-    endereco: 'Av. Inovação',
-    numero: '456',
-    email: 'contato@inovatech.com',
-    contato: '(21) 99999-2222',
-    anotacoes: 'Startup de tecnologia',
-    logo: null,
-    ativo: true,
-  },
-  {
-    id: '3',
-    codigoReferencia: 'EMP003',
-    nomeFantasia: 'DataPro',
-    proprietario: 'Carlos Souza',
-    cidade: 'Belo Horizonte',
-    endereco: 'Rua dos Dados',
-    numero: '789',
-    email: 'contato@datapro.com',
-    contato: '(31) 99999-3333',
-    anotacoes: 'Especialistas em análise de dados',
-    logo: null,
-    ativo: false,
-  },
-];
 
 export default function EmpresasScreen() {
   const navigation = useNavigation<EmpresasScreenNavigationProp>();
+  const db = SQLite.openDatabaseSync('facilite.db');
+  
   const [pesquisa, setPesquisa] = useState('');
-  const [empresas, setEmpresas] = useState<Empresa[]>(MOCK_EMPRESAS);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // CORREÇÃO 1: Pesquisa automática (sem botão Buscar)
+  // Carregar empresas do banco de dados (com tratamento de erro)
+  const carregarEmpresas = async () => {
+    setLoading(true);
+    try {
+      let empresasDb: Empresa[] = []; // CORREÇÃO: tipagem explícita
+      try {
+        const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nomeFantasia ASC');
+        empresasDb = result as Empresa[];
+      } catch (tableError) {
+        console.log('Tabela empresas não encontrada');
+        empresasDb = [];
+      }
+      setEmpresas(empresasDb);
+    } catch (error) {
+      console.error('Erro ao carregar empresas:', error);
+      setEmpresas([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Recarregar quando a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      carregarEmpresas();
+    }, [])
+  );
+
+  // Pesquisa automática
   const empresasFiltradas = empresas.filter(empresa =>
-    empresa.codigoReferencia.toLowerCase().includes(pesquisa.toLowerCase()) ||
-    empresa.nomeFantasia.toLowerCase().includes(pesquisa.toLowerCase())
+    empresa.codigoReferencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+    empresa.nomeFantasia?.toLowerCase().includes(pesquisa.toLowerCase())
   );
 
   const handleAddEmpresa = () => {
@@ -117,22 +104,20 @@ export default function EmpresasScreen() {
     navigation.goBack();
   };
 
-  // Função handlePesquisar REMOVIDA (busca automática)
-
   // Detalhes da empresa ao clicar no card
   const handleEmpresaPress = (empresa: Empresa) => {
-    const statusText = empresa.ativo ? '✅ Ativado' : '❌ Desativado';
+    const statusText = empresa.ativo === 1 ? '✅ Ativado' : '❌ Desativado';
     
     Alert.alert(
       'Detalhes da Empresa',
-      `🏷️ Nome Fantasia: ${empresa.nomeFantasia}\n` +
-      `👤 Proprietário: ${empresa.proprietario}\n` +
-      `📍 Cidade: ${empresa.cidade}\n` +
-      `🏠 Endereço: ${empresa.endereco}, ${empresa.numero}\n` +
-      `📧 E-mail: ${empresa.email}\n` +
-      `📱 Contato: ${empresa.contato}\n` +
-      `🔢 Código: ${empresa.codigoReferencia}\n` +
-      `📝 Anotações: ${empresa.anotacoes}\n` +
+      `🏷️ Nome Fantasia: ${empresa.nomeFantasia || 'N/A'}\n` +
+      `👤 Proprietário: ${empresa.proprietario || 'N/A'}\n` +
+      `📍 Cidade: ${empresa.cidade || 'N/A'}\n` +
+      `🏠 Endereço: ${empresa.endereco || 'N/A'}, ${empresa.numero || 'N/A'}\n` +
+      `📧 E-mail: ${empresa.email || 'N/A'}\n` +
+      `📱 Contato: ${empresa.contato || 'N/A'}\n` +
+      `🔢 Código: ${empresa.codigoReferencia || 'N/A'}\n` +
+      `📝 Anotações: ${empresa.anotacoes || 'N/A'}\n` +
       `✅ Status: ${statusText}`,
       [{ text: 'OK' }]
     );
@@ -200,7 +185,7 @@ export default function EmpresasScreen() {
       >
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.flexContainer}>
-            {/* CORREÇÃO 2: Cabeçalho com botão Voltar (←) */}
+            {/* Cabeçalho com botão Voltar */}
             <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
               <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
                 <Text style={styles.backIcon}>←</Text>
@@ -209,7 +194,7 @@ export default function EmpresasScreen() {
               <View style={styles.placeholderRight} />
             </View>
 
-            {/* CORREÇÃO 3: Barra de Pesquisa sem botão Buscar (campo ocupa 100%) */}
+            {/* Barra de Pesquisa */}
             <View style={styles.searchContainer}>
               <View style={styles.searchInputContainer}>
                 <Text style={styles.searchIconLeft}>🔍</Text>
@@ -223,16 +208,21 @@ export default function EmpresasScreen() {
                   onSubmitEditing={dismissKeyboard}
                 />
               </View>
-              {/* Botão Buscar REMOVIDO */}
             </View>
 
             {/* Lista de Empresas */}
-            {empresasFiltradas.length === 0 ? (
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2463EB" />
+                <Text style={styles.loadingText}>Carregando empresas...</Text>
+              </View>
+            ) : empresasFiltradas.length === 0 ? (
               <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>🏢</Text>
                 <Text style={styles.emptyText}>Nenhuma empresa cadastrada</Text>
-                <TouchableOpacity style={styles.emptyButton} onPress={handleAddEmpresa}>
-                  <Text style={styles.emptyButtonText}>+ Adicionar Empresa</Text>
-                </TouchableOpacity>
+                <Text style={styles.emptySubtext}>
+                  Toque no botão + para adicionar
+                </Text>
               </View>
             ) : (
               <FlatList
@@ -271,7 +261,6 @@ const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
   },
-  // CORREÇÃO: Cabeçalho com botão voltar
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,7 +287,6 @@ const styles = StyleSheet.create({
   placeholderRight: {
     width: 44,
   },
-  // CORREÇÃO: Barra de pesquisa sem botão (campo ocupa 100%)
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -455,26 +443,36 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 80,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6C757D',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: 80,
   },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
   emptyText: {
     fontSize: 16,
     color: '#6C757D',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  emptyButton: {
-    backgroundColor: '#2463EB',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  emptyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginBottom: 24,
+    textAlign: 'center',
   },
 });

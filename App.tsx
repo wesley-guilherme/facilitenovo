@@ -2,10 +2,11 @@
  * App.tsx - COM CABEÇALHO PERSONALIZADO APENAS NA HOME
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { StatusBar, Text, Image, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { initDatabase } from './src/database/initDatabase';
 import HomeScreen from './src/screens/HomeScreen';
 import MeuPerfilScreen from './src/screens/MeuPerfilScreen';
 import EditarConsultorScreen from './src/screens/EditarConsultorScreen';
@@ -13,6 +14,7 @@ import EmpresasScreen from './src/screens/EmpresasScreen';
 import CadastroEmpresaScreen from './src/screens/CadastroEmpresaScreen';
 import EditarEmpresaScreen from './src/screens/EditarEmpresaScreen';
 import VisitasScreen from './src/screens/VisitasScreen';
+import NovaVisitaScreen from './src/screens/NovaVisitaScreen';
 import RelatoriosScreen from './src/screens/RelatoriosScreen';
 import TextosPredefinidosScreen from './src/screens/TextosPredefinidosScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
@@ -23,7 +25,6 @@ import { RootDrawerParamList } from './src/types/navigation';
 import EmpresaConsultorScreen from './src/screens/EmpresaConsultorScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
 import FaleConoscoScreen from './src/screens/FaleConoscoScreen';
-
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
@@ -58,123 +59,136 @@ function CustomHeader({ navigation }: any) {
 }
 
 export default function App() {
+  // Inicializar banco de dados
+  useEffect(() => {
+    initDatabase().catch(console.error);
+  }, []);
+
   return (
     <ConsultorProvider>
-     <EmpresaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
-       <NavigationContainer>
-        <Drawer.Navigator
-          drawerContent={(props: DrawerContentComponentProps) => <CustomDrawerContent {...props} />}
-          screenOptions={{
-            drawerStyle: { width: 280, backgroundColor: '#F8F9FC' },
-            drawerLabelStyle: { fontSize: 16, color: '#1A1A1A' },
-            drawerActiveTintColor: '#2463EB',
-            drawerInactiveTintColor: '#6C757D',
-            headerShown: false, // Desabilita cabeçalho global
-          }}
-        >
-          <Drawer.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{
-              title: 'FACILITE',
-              drawerLabel: 'Início',
-              header: (props: any) => <CustomHeader {...props} />,
-              headerShown: true, // Só a Home tem cabeçalho personalizado
+      <EmpresaProvider>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
+        <NavigationContainer>
+          <Drawer.Navigator
+            drawerContent={(props: DrawerContentComponentProps) => <CustomDrawerContent {...props} />}
+            screenOptions={{
+              drawerStyle: { width: 280, backgroundColor: '#F8F9FC' },
+              drawerLabelStyle: { fontSize: 16, color: '#1A1A1A' },
+              drawerActiveTintColor: '#2463EB',
+              drawerInactiveTintColor: '#6C757D',
+              headerShown: false, // Desabilita cabeçalho global
             }}
-          />
-          <Drawer.Screen
-            name="MeuPerfil"
-            component={MeuPerfilScreen}
-            options={{
-              drawerLabel: 'Meu Perfil',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="EditarConsultor"
-            component={EditarConsultorScreen}
-            options={{
-              drawerLabel: 'Editar Perfil',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="Empresas"
-            component={EmpresasScreen}
-            options={{
-              drawerLabel: 'Empresas',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="CadastroEmpresa"
-            component={CadastroEmpresaScreen}
-            options={{
-              drawerLabel: 'Cadastro Empresa',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="EditarEmpresa"
-            component={EditarEmpresaScreen}
-            options={{
-              drawerLabel: 'Editar Empresa',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="Relatorios"
-            component={RelatoriosScreen}
-            options={{
-              drawerLabel: 'Relatórios',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="TextosPredefinidos"
-            component={TextosPredefinidosScreen}
-            options={{
-              drawerLabel: 'Textos Predefinidos',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="EmpresaConsultor"
-            component={EmpresaConsultorScreen}
-            options={{
-              drawerLabel: 'Minha Empresa',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="Configuracoes"
-            component={ConfiguracoesScreen}
-            options={{
-              drawerLabel: 'Configurações',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="FaleConosco"
-            component={FaleConoscoScreen}
-            options={{
-              drawerLabel: 'Fale Conosco',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="Visitas"
-            component={VisitasScreen}
-            options={{
-              drawerLabel: 'Visitas',
-              headerShown: false,
-            }}
-          />
-        </Drawer.Navigator>
-       </NavigationContainer>
+          >
+            <Drawer.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{
+                title: 'FACILITE',
+                drawerLabel: 'Início',
+                header: (props: any) => <CustomHeader {...props} />,
+                headerShown: true, // Só a Home tem cabeçalho personalizado
+              }}
+            />
+            <Drawer.Screen
+              name="MeuPerfil"
+              component={MeuPerfilScreen}
+              options={{
+                drawerLabel: 'Meu Perfil',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="EditarConsultor"
+              component={EditarConsultorScreen}
+              options={{
+                drawerLabel: 'Editar Perfil',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="Empresas"
+              component={EmpresasScreen}
+              options={{
+                drawerLabel: 'Empresas',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="CadastroEmpresa"
+              component={CadastroEmpresaScreen}
+              options={{
+                drawerLabel: 'Cadastro Empresa',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="EditarEmpresa"
+              component={EditarEmpresaScreen}
+              options={{
+                drawerLabel: 'Editar Empresa',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="Relatorios"
+              component={RelatoriosScreen}
+              options={{
+                drawerLabel: 'Relatórios',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="TextosPredefinidos"
+              component={TextosPredefinidosScreen}
+              options={{
+                drawerLabel: 'Textos Predefinidos',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="EmpresaConsultor"
+              component={EmpresaConsultorScreen}
+              options={{
+                drawerLabel: 'Minha Empresa',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="Configuracoes"
+              component={ConfiguracoesScreen}
+              options={{
+                drawerLabel: 'Configurações',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="FaleConosco"
+              component={FaleConoscoScreen}
+              options={{
+                drawerLabel: 'Fale Conosco',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="Visitas"
+              component={VisitasScreen}
+              options={{
+                drawerLabel: 'Visitas',
+                headerShown: false,
+              }}
+            />
+            <Drawer.Screen
+              name="NovaVisita"
+              component={NovaVisitaScreen}
+              options={{
+                drawerLabel: 'Nova Visita',
+                headerShown: false,
+              }}
+            />
+          </Drawer.Navigator>
+        </NavigationContainer>
       </EmpresaProvider>
-     </ConsultorProvider>
+    </ConsultorProvider>
   );
 }
 

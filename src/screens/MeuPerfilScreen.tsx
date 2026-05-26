@@ -6,15 +6,23 @@
  * - Permite visualizar todas as informações
  * - Clique no botão Editar → Abre tela de edição
  * - Botão Voltar → Retorna para tela inicial
+ * 
+ * DADOS EXIBIDOS:
+ * - Nome completo
+ * - E-mail
+ * - WhatsApp
+ * - Rota
+ * - Status (Ativo/Inativo)
+ * 
+ * OBS: A empresa do consultor é configurada na tela "Minha Empresa"
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   SafeAreaView,
   StatusBar,
   Image,
@@ -30,18 +38,6 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
 type MeuPerfilScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'MeuPerfil'>;
-
-// Dados do consultor logado (único usuário)
-const CONSULTOR_LOGADO = {
-  id: '1',
-  nome: 'João Silva',
-  email: 'joao.silva@email.com',
-  telefone: '(11) 99999-1111',
-  empresa: 'Tech Solutions',
-  rota: 'Rota Sul',
-  foto: null,
-  ativo: true,
-};
 
 export default function MeuPerfilScreen() {
   const navigation = useNavigation<MeuPerfilScreenNavigationProp>();
@@ -59,7 +55,7 @@ export default function MeuPerfilScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* Cabeçalho com botão voltar (igual ao CadastroEmpresaScreen) */}
+      {/* Cabeçalho com botão voltar */}
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
@@ -88,30 +84,31 @@ export default function MeuPerfilScreen() {
 
         {/* Informações do Perfil */}
         <View style={styles.infoContainer}>
+          {/* Nome Completo */}
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📛 Nome Completo</Text>
             <Text style={styles.infoValue}>{consultor.nome}</Text>
           </View>
 
+          {/* E-mail */}
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📧 E-mail</Text>
             <Text style={styles.infoValue}>{consultor.email}</Text>
           </View>
 
+          {/* WhatsApp */}
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📱 WhatsApp</Text>
+            <Text style={styles.infoValue}>{consultor.whatsapp || 'Não informado'}</Text>
           </View>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>🏢 Empresa</Text>
-            <Text style={styles.infoValue}>{consultor.empresa}</Text>
-          </View>
-
+          {/* Rota */}
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>🗺️ Rota</Text>
-            <Text style={styles.infoValue}>{consultor.rota}</Text>
+            <Text style={styles.infoValue}>{consultor.rota || 'Não informada'}</Text>
           </View>
 
+          {/* Status */}
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>✅ Status</Text>
             <Text style={[styles.infoValue, consultor.ativo ? styles.statusAtivo : styles.statusInativo]}>

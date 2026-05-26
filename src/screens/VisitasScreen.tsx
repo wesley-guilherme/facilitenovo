@@ -12,13 +12,12 @@
  * - FAB para criar nova visita
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   TextInput,
   Alert,
   SafeAreaView,
@@ -30,7 +29,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { File, Paths } from 'expo-file-system';
@@ -54,17 +53,18 @@ type Empresa = {
   email: string;
   contato: string;
   rota: string;
+  ativo: number;
 };
 
 // Tipo para Visita
 type Visita = {
   id: string;
   empresaId: string;
-  dataVisita: string; // Formato: YYYY-MM-DD
-  horaVisita: string;
-  formularioAssinado: string | null; // Base64 da imagem/PDF assinado
-  observacoes: string;
-  textoPredefinidoId: string | null;
+  dataVisita: string;
+  horaInicio: string;
+  horaTermino: string;
+  descricao: string;
+  assinatura: string | null;
   createdAt: string;
 };
 
@@ -74,124 +74,6 @@ type EmpresaComUltimaVisita = Empresa & {
   diasDesdeUltimaVisita: number;
   statusAtraso: 'normal' | 'atencao' | 'critico';
 };
-
-// Dados mockados para teste
-const MOCK_EMPRESAS: Empresa[] = [
-  {
-    id: '1',
-    codigoReferencia: 'EMP001',
-    nomeFantasia: 'Tech Solutions',
-    logo: null,
-    cidade: 'São Paulo',
-    endereco: 'Rua das Tecnologias',
-    numero: '123',
-    email: 'contato@techsolutions.com',
-    contato: '(11) 99999-1111',
-    rota: 'Rota Sul',
-  },
-  {
-    id: '2',
-    codigoReferencia: 'EMP002',
-    nomeFantasia: 'InovaTech',
-    logo: null,
-    cidade: 'Rio de Janeiro',
-    endereco: 'Av. Inovação',
-    numero: '456',
-    email: 'contato@inovatech.com',
-    contato: '(21) 99999-2222',
-    rota: 'Rota Norte',
-  },
-  {
-    id: '3',
-    codigoReferencia: 'EMP003',
-    nomeFantasia: 'DataPro',
-    logo: null,
-    cidade: 'Belo Horizonte',
-    endereco: 'Rua dos Dados',
-    numero: '789',
-    email: 'contato@datapro.com',
-    contato: '(31) 99999-3333',
-    rota: 'Rota Leste',
-  },
-  {
-    id: '4',
-    codigoReferencia: 'EMP004',
-    nomeFantasia: 'Cloud Nine',
-    logo: null,
-    cidade: 'Curitiba',
-    endereco: 'Av. das Nuvens',
-    numero: '100',
-    email: 'contato@cloudnine.com',
-    contato: '(41) 99999-4444',
-    rota: 'Rota Oeste',
-  },
-  {
-    id: '5',
-    codigoReferencia: 'EMP005',
-    nomeFantasia: 'DevSolutions',
-    logo: null,
-    cidade: 'Porto Alegre',
-    endereco: 'Rua dos Devs',
-    numero: '200',
-    email: 'contato@devsolutions.com',
-    contato: '(51) 99999-5555',
-    rota: 'Rota Sul',
-  },
-];
-
-// Dados mockados de visitas
-const MOCK_VISITAS: Visita[] = [
-  {
-    id: '1',
-    empresaId: '1',
-    dataVisita: '2026-05-15',
-    horaVisita: '09:30',
-    formularioAssinado: null,
-    observacoes: 'Visita de rotina',
-    textoPredefinidoId: null,
-    createdAt: '2026-05-15T09:30:00Z',
-  },
-  {
-    id: '2',
-    empresaId: '1',
-    dataVisita: '2026-05-10',
-    horaVisita: '14:00',
-    formularioAssinado: null,
-    observacoes: 'Atualização do sistema',
-    textoPredefinidoId: null,
-    createdAt: '2026-05-10T14:00:00Z',
-  },
-  {
-    id: '3',
-    empresaId: '2',
-    dataVisita: '2026-05-12',
-    horaVisita: '10:15',
-    formularioAssinado: null,
-    observacoes: 'Visita solicitada pelo cliente',
-    textoPredefinidoId: null,
-    createdAt: '2026-05-12T10:15:00Z',
-  },
-  {
-    id: '4',
-    empresaId: '2',
-    dataVisita: '2026-05-05',
-    horaVisita: '11:30',
-    formularioAssinado: null,
-    observacoes: 'Visita de rotina',
-    textoPredefinidoId: null,
-    createdAt: '2026-05-05T11:30:00Z',
-  },
-  {
-    id: '5',
-    empresaId: '3',
-    dataVisita: '2026-05-08',
-    horaVisita: '15:45',
-    formularioAssinado: null,
-    observacoes: 'Treinamento da equipe',
-    textoPredefinidoId: null,
-    createdAt: '2026-05-08T15:45:00Z',
-  },
-];
 
 export default function VisitasScreen() {
   const navigation = useNavigation<VisitasScreenNavigationProp>();
@@ -205,15 +87,16 @@ export default function VisitasScreen() {
   const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
   const [modalDataVisible, setModalDataVisible] = useState(false);
 
-  // Carregar configurações
-  useEffect(() => {
-    carregarConfiguracoes();
-    carregarDatos();
-  }, []);
+  // Carregar configurações e dados
+  useFocusEffect(
+    useCallback(() => {
+      carregarConfiguracoes();
+      carregarDados();
+    }, [])
+  );
 
   const carregarConfiguracoes = async () => {
     try {
-      // Buscar dias de aviso das configurações
       const result = await db.getAllAsync('SELECT valor FROM configuracoes WHERE chave = "diasAviso"');
       if (result.length > 0) {
         setDiasAviso(parseInt((result as any[])[0].valor) || 30);
@@ -223,83 +106,111 @@ export default function VisitasScreen() {
     }
   };
 
-  const carregarDatos = async () => {
-    setLoading(true);
+const carregarDados = async () => {
+  setLoading(true);
+  try {
+    // Buscar empresas ativas - com tipagem explícita
+    let empresasDb: Empresa[] = [];
     try {
-      // Buscar empresas
-      const empresasDb = MOCK_EMPRESAS; // Temporário - depois substituir por SQLite
+      const result = await db.getAllAsync('SELECT * FROM empresas WHERE ativo = 1 ORDER BY nomeFantasia ASC');
+      empresasDb = result as Empresa[];
+    } catch (tableError) {
+      console.log('Tabela empresas não encontrada ou vazia');
+      empresasDb = [];
+    }
+    
+    // Buscar todas as visitas - com tipagem explícita
+    let visitasDb: Visita[] = [];
+    try {
+      const result = await db.getAllAsync('SELECT * FROM visitas ORDER BY dataVisita DESC');
+      visitasDb = result as Visita[];
+    } catch (tableError) {
+      console.log('Tabela visitas não encontrada ou vazia');
+      visitasDb = [];
+    }
+    
+    // Se não há empresas, retorna lista vazia
+    if (empresasDb.length === 0) {
+      setEmpresas([]);
+      setDatasDisponiveis([]);
+      setLoading(false);
+      return;
+    }
+    
+    // Agrupar visitas por empresa
+    const empresasComVisitas: EmpresaComUltimaVisita[] = [];
+    
+    for (const empresa of empresasDb) {
+      // Filtrar visitas da empresa
+      const visitasEmpresa = visitasDb.filter(v => v.empresaId === empresa.id);
       
-      // Buscar visitas
-      const visitasDb = MOCK_VISITAS; // Temporário - depois substituir por SQLite
+      // Ordenar por data (mais recente primeiro)
+      visitasEmpresa.sort((a, b) => new Date(b.dataVisita).getTime() - new Date(a.dataVisita).getTime());
       
-      // Agrupar visitas por empresa
-      const empresasComVisitas: EmpresaComUltimaVisita[] = [];
+      const ultimaVisita = visitasEmpresa.length > 0 ? visitasEmpresa[0] : null;
       
-      for (const empresa of empresasDb) {
-        // Filtrar visitas da empresa
-        const visitasEmpresa = visitasDb.filter(v => v.empresaId === empresa.id);
+      // Calcular dias desde última visita
+      let diasDesdeUltimaVisita = 999;
+      let statusAtraso: 'normal' | 'atencao' | 'critico' = 'normal';
+      
+      if (ultimaVisita) {
+        const hoje = new Date();
+        const ultimaData = new Date(ultimaVisita.dataVisita);
+        const diffTime = hoje.getTime() - ultimaData.getTime();
+        diasDesdeUltimaVisita = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        // Ordenar por data (mais recente primeiro)
-        visitasEmpresa.sort((a, b) => new Date(b.dataVisita).getTime() - new Date(a.dataVisita).getTime());
-        
-        const ultimaVisita = visitasEmpresa.length > 0 ? visitasEmpresa[0] : null;
-        
-        // Calcular dias desde última visita
-        let diasDesdeUltimaVisita = 999;
-        let statusAtraso: 'normal' | 'atencao' | 'critico' = 'normal';
-        
-        if (ultimaVisita) {
-          const hoje = new Date();
-          const ultimaData = new Date(ultimaVisita.dataVisita);
-          const diffTime = hoje.getTime() - ultimaData.getTime();
-          diasDesdeUltimaVisita = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          if (diasDesdeUltimaVisita >= diasAviso) {
-            statusAtraso = 'atencao';
-          }
-          if (diasDesdeUltimaVisita >= diasAviso + 15) {
-            statusAtraso = 'critico';
-          }
+        if (diasDesdeUltimaVisita >= diasAviso) {
+          statusAtraso = 'atencao';
         }
-        
-        empresasComVisitas.push({
-          ...empresa,
-          ultimaVisita,
-          diasDesdeUltimaVisita,
-          statusAtraso,
-        });
+        if (diasDesdeUltimaVisita >= diasAviso + 15) {
+          statusAtraso = 'critico';
+        }
       }
       
-      // Ordenar: as que estão há mais dias sem visita no topo
-      empresasComVisitas.sort((a, b) => b.diasDesdeUltimaVisita - a.diasDesdeUltimaVisita);
-      
-      setEmpresas(empresasComVisitas);
-      
-      // Extrair datas disponíveis para relatório
-      const datas = [...new Set(visitasDb.map(v => v.dataVisita))];
-      datas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-      setDatasDisponiveis(datas);
-      
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os dados');
-    } finally {
-      setLoading(false);
+      empresasComVisitas.push({
+        ...empresa,
+        ultimaVisita,
+        diasDesdeUltimaVisita,
+        statusAtraso,
+      });
     }
-  };
+    
+    // Ordenar: as que estão há mais dias sem visita no topo
+    empresasComVisitas.sort((a, b) => b.diasDesdeUltimaVisita - a.diasDesdeUltimaVisita);
+    
+    setEmpresas(empresasComVisitas);
+    
+    // Extrair datas disponíveis para relatório
+    const datas = [...new Set(visitasDb.map(v => v.dataVisita))];
+    datas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    setDatasDisponiveis(datas);
+    
+  } catch (error) {
+    console.error('Erro ao carregar dados:', error);
+    setEmpresas([]);
+    setDatasDisponiveis([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
+  // ==================== CORREÇÃO DAS NAVEGAÇÕES ====================
   const handleVoltar = () => {
     navigation.goBack();
   };
 
-  const handleNovaVisita = () => {
-    navigation.navigate('NovaVisita');
+  const handleNovaVisita = (empresa?: EmpresaComUltimaVisita) => {
+    if (empresa) {
+      navigation.navigate('NovaVisita', { empresa } as any);
+    } else {
+      navigation.navigate('NovaVisita' as any);
+    }
   };
 
   // Pesquisar empresas
   const empresasFiltradas = empresas.filter(empresa =>
-    empresa.codigoReferencia.toLowerCase().includes(pesquisa.toLowerCase()) ||
-    empresa.nomeFantasia.toLowerCase().includes(pesquisa.toLowerCase())
+    empresa.codigoReferencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+    empresa.nomeFantasia?.toLowerCase().includes(pesquisa.toLowerCase())
   );
 
   // Agrupar empresas por data da última visita
@@ -341,59 +252,66 @@ export default function VisitasScreen() {
     setModalDataVisible(false);
   };
 
-  const gerarZipParaData = async (data: string) => {
-    setGerandoRelatorio(true);
-    try {
-      // Buscar visitas da data selecionada
-      const visitasData = MOCK_VISITAS.filter(v => v.dataVisita === data);
-      
-      if (visitasData.length === 0) {
-        Alert.alert('Aviso', 'Nenhuma visita encontrada para esta data');
-        return;
-      }
-      
-      // Criar conteúdo do relatório
-      let relatorioContent = `RELATÓRIO DE VISITAS - ${new Date(data).toLocaleDateString('pt-BR')}\n`;
-      relatorioContent += `${'='.repeat(50)}\n\n`;
-      
-      for (const visita of visitasData) {
-        const empresa = MOCK_EMPRESAS.find(e => e.id === visita.empresaId);
-        relatorioContent += `📋 VISITA\n`;
-        relatorioContent += `Empresa: ${empresa?.nomeFantasia || 'N/A'} (${empresa?.codigoReferencia || 'N/A'})\n`;
-        relatorioContent += `Data: ${new Date(visita.dataVisita).toLocaleDateString('pt-BR')}\n`;
-        relatorioContent += `Horário: ${visita.horaVisita}\n`;
-        relatorioContent += `Observações: ${visita.observacoes}\n`;
-        relatorioContent += `${'-'.repeat(30)}\n\n`;
-      }
-      
-      // Usar a nova API com Paths.cache
-      const fileName = `visitas_${data}.txt`;
-      const filePath = `${Paths.cache.uri}${fileName}`;
-      const arquivo = new File(filePath);
-      
-      await arquivo.write(relatorioContent);
-      
-      // Verificar se o compartilhamento está disponível
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(filePath, {
-          mimeType: 'text/plain',
-          dialogTitle: `Enviar relatório de ${new Date(data).toLocaleDateString('pt-BR')}`,
-        });
-      } else {
-        Alert.alert('Erro', 'Compartilhamento não disponível');
-      }
-      
-      // Limpar arquivo temporário
-      await arquivo.delete();
-      
-    } catch (error) {
-      console.error('Erro ao gerar arquivo:', error);
-      Alert.alert('Erro', 'Não foi possível gerar o relatório');
-    } finally {
-      setGerandoRelatorio(false);
+ const gerarZipParaData = async (data: string) => {
+  setGerandoRelatorio(true);
+  try {
+    // Buscar visitas da data selecionada
+    const visitasDataResult = await db.getAllAsync(
+      'SELECT * FROM visitas WHERE dataVisita = ?',
+      [data]
+    );
+    const visitasData = visitasDataResult as Visita[];
+    
+    if (visitasData.length === 0) {
+      Alert.alert('Aviso', 'Nenhuma visita encontrada para esta data');
+      return;
     }
-  };
+    
+    // Buscar empresas relacionadas
+    let relatorioContent = `RELATÓRIO DE VISITAS - ${new Date(data).toLocaleDateString('pt-BR')}\n`;
+    relatorioContent += `${'='.repeat(50)}\n\n`;
+    
+    for (const visita of visitasData) {
+      const empresaResult = await db.getAllAsync(
+        'SELECT nomeFantasia, codigoReferencia FROM empresas WHERE id = ?',
+        [visita.empresaId]
+      );
+      const empresaData = empresaResult[0] as any;
+      
+      relatorioContent += `📋 VISITA\n`;
+      relatorioContent += `Empresa: ${empresaData?.nomeFantasia || 'N/A'} (${empresaData?.codigoReferencia || 'N/A'})\n`;
+      relatorioContent += `Data: ${new Date(visita.dataVisita).toLocaleDateString('pt-BR')}\n`;
+      relatorioContent += `Horário: ${visita.horaInicio} - ${visita.horaTermino}\n`;
+      relatorioContent += `Descrição: ${visita.descricao}\n`;
+      relatorioContent += `${'-'.repeat(30)}\n\n`;
+    }
+    
+    // Criar arquivo
+    const fileName = `visitas_${data}.txt`;
+    const filePath = `${Paths.cache.uri}${fileName}`;
+    const arquivo = new File(filePath);
+    
+    await arquivo.write(relatorioContent);
+    
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (isAvailable) {
+      await Sharing.shareAsync(filePath, {
+        mimeType: 'text/plain',
+        dialogTitle: `Enviar relatório de ${new Date(data).toLocaleDateString('pt-BR')}`,
+      });
+    } else {
+      Alert.alert('Erro', 'Compartilhamento não disponível');
+    }
+    
+    await arquivo.delete();
+    
+  } catch (error) {
+    console.error('Erro ao gerar arquivo:', error);
+    Alert.alert('Erro', 'Não foi possível gerar o relatório');
+  } finally {
+    setGerandoRelatorio(false);
+  }
+};
 
   // Renderizar cada card
   const renderCard = ({ item }: { item: EmpresaComUltimaVisita }) => {
@@ -413,11 +331,10 @@ export default function VisitasScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, getCardStyle()]}
-        onPress={() => navigation.navigate('DetalhesVisita', { empresa: item, visita: item.ultimaVisita })}
+        onPress={() => handleNovaVisita(item)}
         activeOpacity={0.7}
       >
         <View style={styles.cardContent}>
-          {/* Logo */}
           <View style={styles.cardLogoContainer}>
             {item.logo ? (
               <Image source={{ uri: item.logo }} style={styles.cardLogo} />
@@ -428,7 +345,6 @@ export default function VisitasScreen() {
             )}
           </View>
           
-          {/* Informações */}
           <View style={styles.cardInfo}>
             <Text style={styles.cardCodigo}>🔢 {item.codigoReferencia}</Text>
             <Text style={styles.cardNome}>{item.nomeFantasia}</Text>
@@ -456,7 +372,6 @@ export default function VisitasScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* Cabeçalho */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
@@ -465,7 +380,6 @@ export default function VisitasScreen() {
         <View style={styles.placeholderRight} />
       </View>
 
-      {/* Barra de Pesquisa */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Text style={styles.searchIconLeft}>🔍</Text>
@@ -479,7 +393,6 @@ export default function VisitasScreen() {
         </View>
       </View>
 
-      {/* Botão Gerar Relatório */}
       <TouchableOpacity 
         style={styles.relatorioButton}
         onPress={gerarRelatorioPorData}
@@ -495,7 +408,6 @@ export default function VisitasScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Lista de Visitas */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2463EB" />
@@ -508,9 +420,6 @@ export default function VisitasScreen() {
           <Text style={styles.emptySubtext}>
             Toque no botão + para registrar uma nova visita
           </Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={handleNovaVisita}>
-            <Text style={styles.emptyButtonText}>+ Nova Visita</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView 
@@ -533,16 +442,14 @@ export default function VisitasScreen() {
         </ScrollView>
       )}
 
-      {/* FAB (Botão flutuante +) */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={handleNovaVisita}
+        onPress={() => handleNovaVisita()}
         activeOpacity={0.8}
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
-      {/* Modal para selecionar data do relatório */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -846,18 +753,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
-  emptyButton: {
-    backgroundColor: '#2463EB',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  emptyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
