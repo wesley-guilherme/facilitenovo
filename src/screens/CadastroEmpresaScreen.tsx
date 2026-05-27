@@ -7,6 +7,7 @@
  * - Nome Fantasia (obrigatório)
  * - Proprietário (obrigatório)
  * - Cidade (obrigatório)
+ * - Estado (obrigatório) - UF (ex: SP, RJ, MG)
  * - Endereço (obrigatório)
  * - Número (obrigatório)
  * - E-mail (obrigatório, formato válido)
@@ -15,7 +16,7 @@
  * - Anotações (opcional)
  */
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,6 +37,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+import * as SQLite from 'expo-sqlite';
 import * as ImagePicker from 'expo-image-picker';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -46,12 +48,14 @@ type CadastroEmpresaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamL
 
 export default function CadastroEmpresaScreen() {
   const navigation = useNavigation<CadastroEmpresaScreenNavigationProp>();
+  const db = SQLite.openDatabaseSync('facilite.db');
   
   // Refs para os inputs
   const scrollViewRef = useRef<ScrollView>(null);
   const nomeRef = useRef<TextInput>(null);
   const proprietarioRef = useRef<TextInput>(null);
   const cidadeRef = useRef<TextInput>(null);
+  const estadoRef = useRef<TextInput>(null); // NOVO
   const enderecoRef = useRef<TextInput>(null);
   const numeroRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -64,6 +68,7 @@ export default function CadastroEmpresaScreen() {
   const [nomeFantasia, setNomeFantasia] = useState('');
   const [proprietario, setProprietario] = useState('');
   const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState(''); // NOVO
   const [endereco, setEndereco] = useState('');
   const [numero, setNumero] = useState('');
   const [email, setEmail] = useState('');
@@ -76,6 +81,7 @@ export default function CadastroEmpresaScreen() {
     nomeFantasia: '',
     proprietario: '',
     cidade: '',
+    estado: '', // NOVO
     endereco: '',
     numero: '',
     email: '',
@@ -103,6 +109,17 @@ export default function CadastroEmpresaScreen() {
   const validarCidade = (texto: string) => {
     if (texto.trim() === '') {
       return 'Cidade é obrigatória';
+    }
+    return '';
+  };
+
+  // NOVO: Função para validar estado (UF)
+  const validarEstado = (texto: string) => {
+    if (texto.trim() === '') {
+      return 'Estado é obrigatório';
+    }
+    if (texto.length !== 2) {
+      return 'Use a sigla de 2 letras (ex: SP)';
     }
     return '';
   };
@@ -242,10 +259,11 @@ export default function CadastroEmpresaScreen() {
     );
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
     const cidadeError = validarCidade(cidade);
+    const estadoError = validarEstado(estado); // NOVO
     const enderecoError = validarEndereco(endereco);
     const numeroError = validarNumero(numero);
     const emailError = validarEmail(email);
@@ -256,6 +274,7 @@ export default function CadastroEmpresaScreen() {
       nomeFantasia: nomeError,
       proprietario: proprietarioError,
       cidade: cidadeError,
+      estado: estadoError, // NOVO
       endereco: enderecoError,
       numero: numeroError,
       email: emailError,
@@ -263,33 +282,45 @@ export default function CadastroEmpresaScreen() {
       codigoReferencia: codigoError,
     });
     
-    if (nomeError || proprietarioError || cidadeError || enderecoError || numeroError || emailError || celularError || codigoError) {
+    if (nomeError || proprietarioError || cidadeError || estadoError || enderecoError || numeroError || emailError || celularError || codigoError) {
       Alert.alert('Erro', 'Preencha todos os campos corretamente');
       return;
     }
     
-    const novaEmpresa = {
-      id: Date.now().toString(),
-      logo,
-      nomeFantasia,
-      proprietario,
-      cidade,
-      endereco,
-      numero,
-      email,
-      celular,
-      codigoReferencia,
-      anotacoes,
-      dataCadastro: new Date().toISOString(),
-    };
-    
-    console.log('Empresa cadastrada:', novaEmpresa);
-    
-    Alert.alert(
-      'Sucesso',
-      'Empresa cadastrada com sucesso!',
-      [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
-    );
+    try {
+      const empresaId = Date.now().toString();
+      await db.runAsync(
+        `INSERT INTO empresas (
+          id, codigo_referencia, nome_fantasia, proprietario, cidade, estado,
+          endereco, numero, email, contato, anotacoes, logo, ativo, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          empresaId,
+          codigoReferencia,
+          nomeFantasia,
+          proprietario,
+          cidade,
+          estado.toUpperCase(), // Garantir maiúsculas
+          endereco,
+          numero,
+          email,
+          celular,
+          anotacoes,
+          logo,
+          1,
+          new Date().toISOString()
+        ]
+      );
+      
+      Alert.alert(
+        'Sucesso',
+        'Empresa cadastrada com sucesso!',
+        [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
+      );
+    } catch (error) {
+      console.error('Erro ao salvar empresa:', error);
+      Alert.alert('Erro', 'Não foi possível cadastrar a empresa');
+    }
   };
 
   const handleCancelar = () => {
@@ -300,7 +331,6 @@ export default function CadastroEmpresaScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* CORREÇÃO: Cabeçalho sem posição absoluta e com paddingTop ajustado para iOS */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
@@ -311,7 +341,6 @@ export default function CadastroEmpresaScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Conteúdo rolável */}
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -325,7 +354,6 @@ export default function CadastroEmpresaScreen() {
             keyboardShouldPersistTaps="handled"
             automaticallyAdjustKeyboardInsets={true}
           >
-            {/* Seção da Logo */}
             <View style={styles.logoSection}>
               <TouchableOpacity 
                 style={styles.logoContainer} 
@@ -349,7 +377,6 @@ export default function CadastroEmpresaScreen() {
             </View>
 
             <View style={styles.form}>
-              {/* Campo Nome Fantasia */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Nome Fantasia <Text style={styles.required}>*</Text>
@@ -371,7 +398,6 @@ export default function CadastroEmpresaScreen() {
                 {errors.nomeFantasia ? <Text style={styles.errorText}>{errors.nomeFantasia}</Text> : null}
               </View>
 
-              {/* Campo Proprietário */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Proprietário <Text style={styles.required}>*</Text>
@@ -393,29 +419,51 @@ export default function CadastroEmpresaScreen() {
                 {errors.proprietario ? <Text style={styles.errorText}>{errors.proprietario}</Text> : null}
               </View>
 
-              {/* Campo Cidade */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Cidade <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  ref={cidadeRef}
-                  style={[styles.input, errors.cidade ? styles.inputError : null]}
-                  placeholder="Digite a cidade"
-                  placeholderTextColor="#ADB5BD"
-                  value={cidade}
-                  onChangeText={(text) => {
-                    setCidade(text);
-                    setErrors(prev => ({ ...prev, cidade: validarCidade(text) }));
-                  }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => enderecoRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-                {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
+                  <Text style={styles.label}>
+                    Cidade <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    ref={cidadeRef}
+                    style={[styles.input, errors.cidade ? styles.inputError : null]}
+                    placeholder="Digite a cidade"
+                    placeholderTextColor="#ADB5BD"
+                    value={cidade}
+                    onChangeText={(text) => {
+                      setCidade(text);
+                      setErrors(prev => ({ ...prev, cidade: validarCidade(text) }));
+                    }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => estadoRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                  {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>
+                    Estado <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    ref={estadoRef}
+                    style={[styles.input, errors.estado ? styles.inputError : null]}
+                    placeholder="UF (ex: SP)"
+                    placeholderTextColor="#ADB5BD"
+                    autoCapitalize="characters"
+                    maxLength={2}
+                    value={estado}
+                    onChangeText={(text) => {
+                      setEstado(text.toUpperCase());
+                      setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
+                    }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => enderecoRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                  {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
+                </View>
               </View>
 
-              {/* Campo Endereço */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Endereço <Text style={styles.required}>*</Text>
@@ -437,30 +485,30 @@ export default function CadastroEmpresaScreen() {
                 {errors.endereco ? <Text style={styles.errorText}>{errors.endereco}</Text> : null}
               </View>
 
-              {/* Campo Número */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Número <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  ref={numeroRef}
-                  style={[styles.input, errors.numero ? styles.inputError : null]}
-                  placeholder="Número do endereço"
-                  placeholderTextColor="#ADB5BD"
-                  keyboardType="numeric"
-                  value={numero}
-                  onChangeText={(text) => {
-                    setNumero(text);
-                    setErrors(prev => ({ ...prev, numero: validarNumero(text) }));
-                  }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => emailRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-                {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
+                  <Text style={styles.label}>
+                    Número <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    ref={numeroRef}
+                    style={[styles.input, errors.numero ? styles.inputError : null]}
+                    placeholder="Número do endereço"
+                    placeholderTextColor="#ADB5BD"
+                    keyboardType="numeric"
+                    value={numero}
+                    onChangeText={(text) => {
+                      setNumero(text);
+                      setErrors(prev => ({ ...prev, numero: validarNumero(text) }));
+                    }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                  {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
+                </View>
               </View>
 
-              {/* Campo E-mail */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   E-mail <Text style={styles.required}>*</Text>
@@ -484,7 +532,6 @@ export default function CadastroEmpresaScreen() {
                 {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
 
-              {/* Campo Celular */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Celular <Text style={styles.required}>*</Text>
@@ -505,7 +552,6 @@ export default function CadastroEmpresaScreen() {
                 {errors.celular ? <Text style={styles.errorText}>{errors.celular}</Text> : null}
               </View>
 
-              {/* Campo Código de Referência */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Código de Referência <Text style={styles.required}>*</Text>
@@ -526,7 +572,6 @@ export default function CadastroEmpresaScreen() {
                 {errors.codigoReferencia ? <Text style={styles.errorText}>{errors.codigoReferencia}</Text> : null}
               </View>
 
-              {/* Campo Anotações (opcional) */}
               <View style={styles.field}>
                 <Text style={styles.label}>Anotações</Text>
                 <TextInput
@@ -556,7 +601,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FC',
   },
-  // CORREÇÃO: Cabeçalho sem position absolute
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -648,6 +692,9 @@ const styles = StyleSheet.create({
   },
   field: {
     marginBottom: 16,
+  },
+  row: {
+    flexDirection: 'row',
   },
   label: {
     fontSize: 14,

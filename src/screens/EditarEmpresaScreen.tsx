@@ -54,6 +54,7 @@ type EmpresaData = {
   nomeFantasia: string;
   proprietario: string;
   cidade: string;
+  estado: string;
   endereco: string;
   numero: string;
   email: string;
@@ -87,6 +88,7 @@ export default function EditarEmpresaScreen() {
   const [nomeFantasia, setNomeFantasia] = useState(empresa?.nomeFantasia || '');
   const [proprietario, setProprietario] = useState(empresa?.proprietario || '');
   const [cidade, setCidade] = useState(empresa?.cidade || '');
+  const [estado, setEstado] = useState(empresa?.estado || '');
   const [endereco, setEndereco] = useState(empresa?.endereco || '');
   const [numero, setNumero] = useState(empresa?.numero || '');
   const [email, setEmail] = useState(empresa?.email || '');
@@ -100,6 +102,7 @@ export default function EditarEmpresaScreen() {
     nomeFantasia: '',
     proprietario: '',
     cidade: '',
+    estado: '',
     endereco: '',
     numero: '',
     email: '',
@@ -130,6 +133,16 @@ export default function EditarEmpresaScreen() {
     }
     return '';
   };
+
+const validarEstado = (texto: string) => {
+  if (texto.trim() === '') {
+    return 'Estado é obrigatório';
+  }
+  if (texto.length !== 2) {
+    return 'Use a sigla de 2 letras (ex: SP)';
+  }
+  return '';
+};
 
   // Função para validar endereço
   const validarEndereco = (texto: string) => {
@@ -293,6 +306,7 @@ export default function EditarEmpresaScreen() {
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
     const cidadeError = validarCidade(cidade);
+    const estadoError = validarEstado(estado)
     const enderecoError = validarEndereco(endereco);
     const numeroError = validarNumero(numero);
     const emailError = validarEmail(email);
@@ -303,6 +317,7 @@ export default function EditarEmpresaScreen() {
       nomeFantasia: nomeError,
       proprietario: proprietarioError,
       cidade: cidadeError,
+      estado: estadoError,
       endereco: enderecoError,
       numero: numeroError,
       email: emailError,
@@ -310,7 +325,7 @@ export default function EditarEmpresaScreen() {
       codigoReferencia: codigoError,
     });
     
-    if (nomeError || proprietarioError || cidadeError || enderecoError || numeroError || emailError || celularError || codigoError) {
+    if (nomeError || proprietarioError || cidadeError || estadoError || enderecoError || numeroError || emailError || celularError || codigoError) {
       Alert.alert('Erro', 'Preencha todos os campos corretamente');
       return;
     }
@@ -321,6 +336,7 @@ export default function EditarEmpresaScreen() {
       nomeFantasia,
       proprietario,
       cidade,
+      estado: estado.toUpperCase(),
       endereco,
       numero,
       email,
@@ -471,6 +487,23 @@ export default function EditarEmpresaScreen() {
                   blurOnSubmit={false}
                 />
                 {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
+              </View>
+
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>Estado <Text style={styles.required}>*</Text></Text>
+                <TextInput
+                  style={[styles.input, errors.estado ? styles.inputError : null]}
+                  placeholder="UF (ex: SP)"
+                  placeholderTextColor="#ADB5BD"
+                  autoCapitalize="characters"
+                  maxLength={2}
+                  value={estado}
+                  onChangeText={(text) => {
+                    setEstado(text.toUpperCase());
+                    setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
+                  }}
+                />
+                {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
               </View>
 
               {/* Campo Endereço */}

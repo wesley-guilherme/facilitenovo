@@ -16,7 +16,6 @@ export type Consultor = {
   empresa: string;
   rota: string;
   foto: string | null;
-  ativo: boolean;
 };
 
 type ConsultorContextData = {
@@ -36,7 +35,6 @@ const CONSULTOR_INICIAL: Consultor = {
   empresa: '',
   rota: '',
   foto: null,
-  ativo: true,
 };
 
 export function ConsultorProvider({ children }: { children: ReactNode }) {

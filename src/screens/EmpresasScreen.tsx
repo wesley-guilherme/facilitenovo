@@ -41,10 +41,11 @@ type EmpresasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'E
 // Tipo para os dados da empresa
 type Empresa = {
   id: string;
-  codigoReferencia: string;
-  nomeFantasia: string;
+  codigo_referencia: string;
+  nome_fantasia: string;
   proprietario: string;
   cidade: string;
+  estado: string;
   endereco: string;
   numero: string;
   email: string;
@@ -62,13 +63,13 @@ export default function EmpresasScreen() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Carregar empresas do banco de dados (com tratamento de erro)
+  // Carregar empresas do banco de dados
   const carregarEmpresas = async () => {
     setLoading(true);
     try {
-      let empresasDb: Empresa[] = []; // CORREÇÃO: tipagem explícita
+      let empresasDb: Empresa[] = [];
       try {
-        const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nomeFantasia ASC');
+        const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nome_fantasia ASC');
         empresasDb = result as Empresa[];
       } catch (tableError) {
         console.log('Tabela empresas não encontrada');
@@ -92,8 +93,8 @@ export default function EmpresasScreen() {
 
   // Pesquisa automática
   const empresasFiltradas = empresas.filter(empresa =>
-    empresa.codigoReferencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
-    empresa.nomeFantasia?.toLowerCase().includes(pesquisa.toLowerCase())
+    empresa.codigo_referencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+    empresa.nome_fantasia?.toLowerCase().includes(pesquisa.toLowerCase())
   );
 
   const handleAddEmpresa = () => {
@@ -110,13 +111,13 @@ export default function EmpresasScreen() {
     
     Alert.alert(
       'Detalhes da Empresa',
-      `🏷️ Nome Fantasia: ${empresa.nomeFantasia || 'N/A'}\n` +
+      `🏷️ Nome Fantasia: ${empresa.nome_fantasia || 'N/A'}\n` +
       `👤 Proprietário: ${empresa.proprietario || 'N/A'}\n` +
-      `📍 Cidade: ${empresa.cidade || 'N/A'}\n` +
+      `📍 Cidade/UF: ${empresa.cidade || 'N/A'}/${empresa.estado || 'N/A'}\n` +
       `🏠 Endereço: ${empresa.endereco || 'N/A'}, ${empresa.numero || 'N/A'}\n` +
       `📧 E-mail: ${empresa.email || 'N/A'}\n` +
       `📱 Contato: ${empresa.contato || 'N/A'}\n` +
-      `🔢 Código: ${empresa.codigoReferencia || 'N/A'}\n` +
+      `🔢 Código: ${empresa.codigo_referencia || 'N/A'}\n` +
       `📝 Anotações: ${empresa.anotacoes || 'N/A'}\n` +
       `✅ Status: ${statusText}`,
       [{ text: 'OK' }]
@@ -151,15 +152,15 @@ export default function EmpresasScreen() {
         </View>
         
         <View style={styles.cardInfo}>
-          <Text style={styles.cardCodigo}>🔢 {item.codigoReferencia}</Text>
-          <Text style={styles.cardNome}>{item.nomeFantasia}</Text>
+          <Text style={styles.cardCodigo}>🔢 {item.codigo_referencia}</Text>
+          <Text style={styles.cardNome}>{item.nome_fantasia}</Text>
           <View style={styles.cardContatoContainer}>
             <Text style={styles.cardContatoIcon}>📱</Text>
             <Text style={styles.cardContato}>{item.contato}</Text>
           </View>
           <View style={styles.cardCidadeContainer}>
             <Text style={styles.cardCidadeIcon}>📍</Text>
-            <Text style={styles.cardCidade}>{item.cidade}</Text>
+            <Text style={styles.cardCidade}>{item.cidade}/{item.estado}</Text>
           </View>
         </View>
       </TouchableOpacity>

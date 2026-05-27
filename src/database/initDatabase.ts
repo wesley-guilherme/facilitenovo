@@ -1,5 +1,7 @@
 /**
- * INICIALIZAÇÃO DO BANCO DE DADOS - RECRIAÇÃO TOTAL
+ * INICIALIZAÇÃO DO BANCO DE DADOS
+ * 
+ * Cria todas as tabelas necessárias para o aplicativo
  */
 
 import * as SQLite from 'expo-sqlite';
@@ -8,11 +10,17 @@ export const initDatabase = async () => {
   const db = SQLite.openDatabaseSync('facilite.db');
   
   try {
-    // Recriar todas as tabelas (perde dados antigos)
-    await db.execAsync(`DROP TABLE IF EXISTS empresas`);
-    await db.execAsync(`DROP TABLE IF EXISTS visitas`);
-    await db.execAsync(`DROP TABLE IF EXISTS configuracoes`);
-    await db.execAsync(`DROP TABLE IF EXISTS textos_predefinidos`);
+    // Verificar e adicionar coluna estado na tabela empresas se necessário
+    try {
+      const tableInfo = await db.getAllAsync('PRAGMA table_info(empresas)');
+      const hasEstado = (tableInfo as any[]).some(col => col.name === 'estado');
+      if (!hasEstado) {
+        await db.execAsync('ALTER TABLE empresas ADD COLUMN estado TEXT DEFAULT "SP"');
+        console.log('✅ Coluna estado adicionada à tabela empresas');
+      }
+    } catch (error) {
+      console.log('Tabela empresas não existe ainda, será criada');
+    }
     
     // Tabela de empresas
     await db.execAsync(`
@@ -22,6 +30,7 @@ export const initDatabase = async () => {
         nome_fantasia TEXT NOT NULL,
         proprietario TEXT,
         cidade TEXT NOT NULL,
+        estado TEXT DEFAULT 'SP',
         endereco TEXT NOT NULL,
         numero TEXT NOT NULL,
         email TEXT NOT NULL,
@@ -71,9 +80,12 @@ export const initDatabase = async () => {
       )
     `);
     
-    // Inserir configuração padrão
-    await db.runAsync('INSERT INTO configuracoes (chave, valor, updated_at) VALUES (?, ?, ?)', 
-      ['dias_aviso', '30', new Date().toISOString()]);
+    // Inserir configuração padrão se não existir
+    const configExist = await db.getAllAsync('SELECT * FROM configuracoes WHERE chave = "dias_aviso"');
+    if (configExist.length === 0) {
+      await db.runAsync('INSERT INTO configuracoes (chave, valor, updated_at) VALUES (?, ?, ?)', 
+        ['dias_aviso', '30', new Date().toISOString()]);
+    }
     
     console.log('✅ Banco de dados inicializado com sucesso!');
     

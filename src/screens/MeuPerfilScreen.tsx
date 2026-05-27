@@ -107,14 +107,6 @@ export default function MeuPerfilScreen() {
             <Text style={styles.infoLabel}>🗺️ Rota</Text>
             <Text style={styles.infoValue}>{consultor.rota || 'Não informada'}</Text>
           </View>
-
-          {/* Status */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>✅ Status</Text>
-            <Text style={[styles.infoValue, consultor.ativo ? styles.statusAtivo : styles.statusInativo]}>
-              {consultor.ativo ? 'Ativo' : 'Inativo'}
-            </Text>
-          </View>
         </View>
 
         {/* Botão Editar Perfil */}

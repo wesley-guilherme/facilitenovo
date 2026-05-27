@@ -8,11 +8,13 @@
  * - Email (obrigatório, formato válido)
  * - WhatsApp (obrigatório, formato (99)-99999-9999)
  * - Rota (obrigatório)
- * - Desativar Cadastro (opcional)
  * - Excluir Cadastro (botão de ação)
+ * 
+ * OBS: O campo "Desativar Cadastro" foi removido, pois o consultor
+ * precisa estar sempre ativo no sistema.
  */
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,7 +24,6 @@ import {
   Alert,
   ScrollView,
   Image,
-  Switch,
   SafeAreaView,
   Platform,
   StatusBar,
@@ -60,7 +61,6 @@ export default function EditarConsultorScreen() {
   const [email, setEmail] = useState(consultorContext?.email || '');
   const [whatsapp, setWhatsapp] = useState(consultorContext?.whatsapp || '');
   const [rota, setRota] = useState(consultorContext?.rota || '');
-  const [desativado, setDesativado] = useState(!consultorContext?.ativo || false);
 
   // Estados de erro
   const [errors, setErrors] = useState({
@@ -213,14 +213,13 @@ export default function EditarConsultorScreen() {
       return;
     }
     
-    // Atualizar o contexto com os novos dados
+    // Atualizar o contexto com os novos dados (consultor sempre ativo)
     atualizarConsultor({
       nome,
       email,
       whatsapp,
       rota,
-      foto,
-      ativo: !desativado,
+      foto
     });
     
     Alert.alert(
@@ -234,21 +233,11 @@ export default function EditarConsultorScreen() {
     navigation.navigate('MeuPerfil');
   };
 
-  // Switch com useMemo para evitar piscar
-  const switchComponent = useMemo(() => (
-    <Switch
-      value={desativado}
-      onValueChange={() => setDesativado(prev => !prev)}
-      trackColor={{ false: '#E9ECEF', true: '#2463EB' }}
-      thumbColor="#FFFFFF"
-    />
-  ), [desativado]);
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* CORREÇÃO: Cabeçalho sem posição absoluta e com paddingTop ajustado para iOS */}
+      {/* Cabeçalho com título "Editar Perfil" */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
@@ -297,6 +286,7 @@ export default function EditarConsultorScreen() {
             </View>
 
             <View style={styles.form}>
+              {/* Campo Nome */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Nome <Text style={styles.required}>*</Text>
@@ -318,6 +308,7 @@ export default function EditarConsultorScreen() {
                 {errors.nome ? <Text style={styles.errorText}>{errors.nome}</Text> : null}
               </View>
 
+              {/* Campo E-mail */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   E-mail <Text style={styles.required}>*</Text>
@@ -341,6 +332,7 @@ export default function EditarConsultorScreen() {
                 {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
 
+              {/* Campo WhatsApp */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   WhatsApp <Text style={styles.required}>*</Text>
@@ -361,6 +353,7 @@ export default function EditarConsultorScreen() {
                 {errors.whatsapp ? <Text style={styles.errorText}>{errors.whatsapp}</Text> : null}
               </View>
 
+              {/* Campo Rota */}
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Rota <Text style={styles.required}>*</Text>
@@ -379,12 +372,6 @@ export default function EditarConsultorScreen() {
                   onSubmitEditing={Keyboard.dismiss}
                 />
                 {errors.rota ? <Text style={styles.errorText}>{errors.rota}</Text> : null}
-              </View>
-
-              {/* Switch Desativar Cadastro */}
-              <View style={styles.switchContainer}>
-                <Text style={styles.switchLabel}>Desativar Cadastro</Text>
-                {switchComponent}
               </View>
 
               {/* Botão Excluir Cadastro */}
@@ -408,7 +395,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FC',
   },
-  // CORREÇÃO: Cabeçalho sem position absolute
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -532,22 +518,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#ADB5BD',
     marginTop: 4,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 8,
-  },
-  switchLabel: {
-    fontSize: 15,
-    color: '#1A1A1A',
   },
   excluirButton: {
     backgroundColor: '#FF3B30',

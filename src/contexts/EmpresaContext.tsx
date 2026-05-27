@@ -29,20 +29,20 @@ type EmpresaContextData = {
 
 const EmpresaContext = createContext<EmpresaContextData | undefined>(undefined);
 
-// Dados iniciais da empresa
+// Dados iniciais da empresa - todos vazios (sem mock)
 const EMPRESA_INICIAL: EmpresaConsultor = {
-  id: '1',
+  id: '',
   logoPequena: null,
   logoMedia: null,
-  nome: 'Tech Solutions',
-  endereco: 'Rua das Tecnologias',
-  numero: '123',
-  cidade: 'São Paulo',
-  estado: 'SP',
-  celular: '(11) 99999-1111',
-  telefone: '(11) 3333-4444',
-  email: 'contato@techsolutions.com',
-  mensagemFormulario: 'Agradecemos pela parceria! Estamos à disposição.',
+  nome: '',
+  endereco: '',
+  numero: '',
+  cidade: '',
+  estado: '',
+  celular: '',
+  telefone: '',
+  email: '',
+  mensagemFormulario: '',
 };
 
 export function EmpresaProvider({ children }: { children: ReactNode }) {
