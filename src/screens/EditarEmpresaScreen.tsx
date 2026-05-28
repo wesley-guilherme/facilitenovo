@@ -7,6 +7,7 @@
  * - Nome Fantasia (obrigatório)
  * - Proprietário (obrigatório)
  * - Cidade (obrigatório)
+ * - Estado (obrigatório)
  * - Endereço (obrigatório)
  * - Número (obrigatório)
  * - E-mail (obrigatório, formato válido)
@@ -40,6 +41,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as ImagePicker from 'expo-image-picker';
+import * as SQLite from 'expo-sqlite';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -67,6 +69,7 @@ type EmpresaData = {
 export default function EditarEmpresaScreen() {
   const navigation = useNavigation<EditarEmpresaScreenNavigationProp>();
   const route = useRoute();
+  const db = SQLite.openDatabaseSync('facilite.db');
   
   // Recebe os dados da empresa via parâmetro de navegação
   const empresa = (route.params as any)?.empresa as EmpresaData;
@@ -76,6 +79,7 @@ export default function EditarEmpresaScreen() {
   const nomeRef = useRef<TextInput>(null);
   const proprietarioRef = useRef<TextInput>(null);
   const cidadeRef = useRef<TextInput>(null);
+  const estadoRef = useRef<TextInput>(null);
   const enderecoRef = useRef<TextInput>(null);
   const numeroRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -134,15 +138,15 @@ export default function EditarEmpresaScreen() {
     return '';
   };
 
-const validarEstado = (texto: string) => {
-  if (texto.trim() === '') {
-    return 'Estado é obrigatório';
-  }
-  if (texto.length !== 2) {
-    return 'Use a sigla de 2 letras (ex: SP)';
-  }
-  return '';
-};
+  const validarEstado = (texto: string) => {
+    if (texto.trim() === '') {
+      return 'Estado é obrigatório';
+    }
+    if (texto.length !== 2) {
+      return 'Use a sigla de 2 letras (ex: SP)';
+    }
+    return '';
+  };
 
   // Função para validar endereço
   const validarEndereco = (texto: string) => {
@@ -289,24 +293,31 @@ const validarEstado = (texto: string) => {
         { 
           text: 'Excluir', 
           style: 'destructive',
-          onPress: () => {
-            console.log('Empresa excluída:', empresa?.id);
-            Alert.alert(
-              'Sucesso',
-              'Empresa excluída com sucesso!',
-              [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
-            );
+          onPress: async () => {
+            try {
+              await db.runAsync('DELETE FROM empresas WHERE id = ?', [empresa.id]);
+              Alert.alert(
+                'Sucesso',
+                'Empresa excluída com sucesso!',
+                [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
+              );
+            } catch (error) {
+              console.error('Erro ao excluir empresa:', error);
+              Alert.alert('Erro', 'Não foi possível excluir a empresa');
+            }
           }
         }
       ]
     );
   };
 
-  const handleSalvar = () => {
+  // CORREÇÃO: Função handleSalvar com UPDATE no banco
+  const handleSalvar = async () => {
+    console.log('🔵 1 - Iniciou handleSalvar');
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
     const cidadeError = validarCidade(cidade);
-    const estadoError = validarEstado(estado)
+    const estadoError = validarEstado(estado);
     const enderecoError = validarEndereco(endereco);
     const numeroError = validarNumero(numero);
     const emailError = validarEmail(email);
@@ -324,36 +335,78 @@ const validarEstado = (texto: string) => {
       celular: celularError,
       codigoReferencia: codigoError,
     });
+
+    console.log('🔵 2 - Validações concluídas');
     
     if (nomeError || proprietarioError || cidadeError || estadoError || enderecoError || numeroError || emailError || celularError || codigoError) {
       Alert.alert('Erro', 'Preencha todos os campos corretamente');
       return;
     }
     
-    const empresaEditada = {
-      id: empresa?.id || Date.now().toString(),
-      logo,
-      nomeFantasia,
-      proprietario,
-      cidade,
-      estado: estado.toUpperCase(),
-      endereco,
-      numero,
-      email,
-      celular,
-      codigoReferencia,
-      anotacoes,
-      ativo: !desativado,
-      dataAtualizacao: new Date().toISOString(),
-    };
-    
-    console.log('Empresa atualizada:', empresaEditada);
-    
-    Alert.alert(
-      'Sucesso',
-      'Empresa atualizada com sucesso!',
-      [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
-    );
+ console.log('🔵 4 - Validação passou, ID da empresa:', empresa?.id);
+  console.log('🔵 5 - Dados que serão enviados:', {
+    codigoReferencia,
+    nomeFantasia,
+    proprietario,
+    cidade,
+    estado,
+    endereco,
+    numero,
+    email,
+    celular,
+    anotacoes,
+    logo,
+    desativado,
+    empresaId: empresa?.id
+  });   
+
+    try {
+      console.log('🔵 6 - Tentando executar UPDATE...');
+      await db.runAsync(
+        `UPDATE empresas SET 
+          codigo_referencia = ?, 
+          nome_fantasia = ?, 
+          proprietario = ?, 
+          cidade = ?, 
+          estado = ?, 
+          endereco = ?, 
+          numero = ?, 
+          email = ?, 
+          contato = ?, 
+          anotacoes = ?, 
+          logo = ?, 
+          ativo = ?, 
+          updated_at = ?
+        WHERE id = ?`,
+        [
+          codigoReferencia,
+          nomeFantasia,
+          proprietario,
+          cidade,
+          estado.toUpperCase(),
+          endereco,
+          numero,
+          email,
+          celular,
+          anotacoes,
+          logo,
+          desativado ? 0 : 1,
+          new Date().toISOString(),
+          empresa.id
+        ]
+      );
+
+      console.log('✅ 7 - UPDATE executado com sucesso!');
+      
+      Alert.alert(
+        'Sucesso',
+        'Empresa atualizada com sucesso!',
+        [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
+      );
+    } catch (error) {
+      console.error('❌ 8 - Erro no UPDATE:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar a empresa');
+    }
   };
 
   const handleCancelar = () => {
@@ -374,7 +427,6 @@ const validarEstado = (texto: string) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      {/* CORREÇÃO: Cabeçalho sem posição absoluta e com paddingTop ajustado para iOS */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
@@ -385,7 +437,6 @@ const validarEstado = (texto: string) => {
         </TouchableOpacity>
       </View>
 
-      {/* Conteúdo rolável */}
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -399,7 +450,6 @@ const validarEstado = (texto: string) => {
             keyboardShouldPersistTaps="handled"
             automaticallyAdjustKeyboardInsets={true}
           >
-            {/* Seção da Logo */}
             <View style={styles.logoSection}>
               <TouchableOpacity 
                 style={styles.logoContainer} 
@@ -467,43 +517,44 @@ const validarEstado = (texto: string) => {
                 {errors.proprietario ? <Text style={styles.errorText}>{errors.proprietario}</Text> : null}
               </View>
 
-              {/* Campo Cidade */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Cidade <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  ref={cidadeRef}
-                  style={[styles.input, errors.cidade ? styles.inputError : null]}
-                  placeholder="Digite a cidade"
-                  placeholderTextColor="#ADB5BD"
-                  value={cidade}
-                  onChangeText={(text) => {
-                    setCidade(text);
-                    setErrors(prev => ({ ...prev, cidade: validarCidade(text) }));
-                  }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => enderecoRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-                {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
-              </View>
-
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Estado <Text style={styles.required}>*</Text></Text>
-                <TextInput
-                  style={[styles.input, errors.estado ? styles.inputError : null]}
-                  placeholder="UF (ex: SP)"
-                  placeholderTextColor="#ADB5BD"
-                  autoCapitalize="characters"
-                  maxLength={2}
-                  value={estado}
-                  onChangeText={(text) => {
-                    setEstado(text.toUpperCase());
-                    setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
-                  }}
-                />
-                {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
+              {/* Linha Cidade + Estado */}
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
+                  <Text style={styles.label}>
+                    Cidade <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    ref={cidadeRef}
+                    style={[styles.input, errors.cidade ? styles.inputError : null]}
+                    placeholder="Digite a cidade"
+                    placeholderTextColor="#ADB5BD"
+                    value={cidade}
+                    onChangeText={(text) => {
+                      setCidade(text);
+                      setErrors(prev => ({ ...prev, cidade: validarCidade(text) }));
+                    }}
+                  />
+                  {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>
+                    Estado <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    ref={estadoRef}
+                    style={[styles.input, errors.estado ? styles.inputError : null]}
+                    placeholder="UF (ex: SP)"
+                    placeholderTextColor="#ADB5BD"
+                    autoCapitalize="characters"
+                    maxLength={2}
+                    value={estado}
+                    onChangeText={(text) => {
+                      setEstado(text.toUpperCase());
+                      setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
+                    }}
+                  />
+                  {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
+                </View>
               </View>
 
               {/* Campo Endereço */}
@@ -521,34 +572,31 @@ const validarEstado = (texto: string) => {
                     setEndereco(text);
                     setErrors(prev => ({ ...prev, endereco: validarEndereco(text) }));
                   }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => numeroRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 {errors.endereco ? <Text style={styles.errorText}>{errors.endereco}</Text> : null}
               </View>
 
-              {/* Campo Número */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Número <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  ref={numeroRef}
-                  style={[styles.input, errors.numero ? styles.inputError : null]}
-                  placeholder="Número do endereço"
-                  placeholderTextColor="#ADB5BD"
-                  keyboardType="numeric"
-                  value={numero}
-                  onChangeText={(text) => {
-                    setNumero(text);
-                    setErrors(prev => ({ ...prev, numero: validarNumero(text) }));
-                  }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => emailRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-                {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
+              {/* Linha Número + (espaço vazio) */}
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
+                  <Text style={styles.label}>
+                    Número <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    ref={numeroRef}
+                    style={[styles.input, errors.numero ? styles.inputError : null]}
+                    placeholder="Número do endereço"
+                    placeholderTextColor="#ADB5BD"
+                    keyboardType="numeric"
+                    value={numero}
+                    onChangeText={(text) => {
+                      setNumero(text);
+                      setErrors(prev => ({ ...prev, numero: validarNumero(text) }));
+                    }}
+                  />
+                  {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
+                </View>
+                <View style={[styles.field, { flex: 1 }]} />
               </View>
 
               {/* Campo E-mail */}
@@ -568,9 +616,6 @@ const validarEstado = (texto: string) => {
                     setEmail(text);
                     setErrors(prev => ({ ...prev, email: validarEmail(text) }));
                   }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => celularRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
@@ -588,9 +633,6 @@ const validarEstado = (texto: string) => {
                   keyboardType="numeric"
                   value={celular}
                   onChangeText={handleCelularChange}
-                  returnKeyType="next"
-                  onSubmitEditing={() => codigoRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 <Text style={styles.helperText}>Digite DDD + 9 números (ex: 11999999999)</Text>
                 {errors.celular ? <Text style={styles.errorText}>{errors.celular}</Text> : null}
@@ -609,15 +651,12 @@ const validarEstado = (texto: string) => {
                   keyboardType="numeric"
                   value={codigoReferencia}
                   onChangeText={handleCodigoChange}
-                  returnKeyType="next"
-                  onSubmitEditing={() => anotacoesRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 <Text style={styles.helperText}>Apenas números</Text>
                 {errors.codigoReferencia ? <Text style={styles.errorText}>{errors.codigoReferencia}</Text> : null}
               </View>
 
-              {/* Campo Anotações (opcional) */}
+              {/* Campo Anotações */}
               <View style={styles.field}>
                 <Text style={styles.label}>Anotações</Text>
                 <TextInput
@@ -630,8 +669,6 @@ const validarEstado = (texto: string) => {
                   textAlignVertical="top"
                   value={anotacoes}
                   onChangeText={setAnotacoes}
-                  returnKeyType="done"
-                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
 
@@ -662,7 +699,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FC',
   },
-  // CORREÇÃO: Cabeçalho sem position absolute
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -754,6 +790,9 @@ const styles = StyleSheet.create({
   },
   field: {
     marginBottom: 16,
+  },
+  row: {
+    flexDirection: 'row',
   },
   label: {
     fontSize: 14,

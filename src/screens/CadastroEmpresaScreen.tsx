@@ -7,7 +7,7 @@
  * - Nome Fantasia (obrigatório)
  * - Proprietário (obrigatório)
  * - Cidade (obrigatório)
- * - Estado (obrigatório) - UF (ex: SP, RJ, MG)
+ * - Estado (obrigatório)
  * - Endereço (obrigatório)
  * - Número (obrigatório)
  * - E-mail (obrigatório, formato válido)
@@ -55,7 +55,7 @@ export default function CadastroEmpresaScreen() {
   const nomeRef = useRef<TextInput>(null);
   const proprietarioRef = useRef<TextInput>(null);
   const cidadeRef = useRef<TextInput>(null);
-  const estadoRef = useRef<TextInput>(null); // NOVO
+  const estadoRef = useRef<TextInput>(null);
   const enderecoRef = useRef<TextInput>(null);
   const numeroRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -68,7 +68,7 @@ export default function CadastroEmpresaScreen() {
   const [nomeFantasia, setNomeFantasia] = useState('');
   const [proprietario, setProprietario] = useState('');
   const [cidade, setCidade] = useState('');
-  const [estado, setEstado] = useState(''); // NOVO
+  const [estado, setEstado] = useState('');
   const [endereco, setEndereco] = useState('');
   const [numero, setNumero] = useState('');
   const [email, setEmail] = useState('');
@@ -81,7 +81,7 @@ export default function CadastroEmpresaScreen() {
     nomeFantasia: '',
     proprietario: '',
     cidade: '',
-    estado: '', // NOVO
+    estado: '',
     endereco: '',
     numero: '',
     email: '',
@@ -113,7 +113,7 @@ export default function CadastroEmpresaScreen() {
     return '';
   };
 
-  // NOVO: Função para validar estado (UF)
+  // Função para validar estado
   const validarEstado = (texto: string) => {
     if (texto.trim() === '') {
       return 'Estado é obrigatório';
@@ -260,10 +260,14 @@ export default function CadastroEmpresaScreen() {
   };
 
   const handleSalvar = async () => {
+
+    console.log('🔵 1 - Iniciou cadastro');
+
+    
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
     const cidadeError = validarCidade(cidade);
-    const estadoError = validarEstado(estado); // NOVO
+    const estadoError = validarEstado(estado);
     const enderecoError = validarEndereco(endereco);
     const numeroError = validarNumero(numero);
     const emailError = validarEmail(email);
@@ -274,25 +278,78 @@ export default function CadastroEmpresaScreen() {
       nomeFantasia: nomeError,
       proprietario: proprietarioError,
       cidade: cidadeError,
-      estado: estadoError, // NOVO
+      estado: estadoError,
       endereco: enderecoError,
       numero: numeroError,
       email: emailError,
       celular: celularError,
       codigoReferencia: codigoError,
     });
+
+    console.log('🔵 2 - Validações concluídas');
     
     if (nomeError || proprietarioError || cidadeError || estadoError || enderecoError || numeroError || emailError || celularError || codigoError) {
+      console.log('🔴 3 - Erro de validação');
       Alert.alert('Erro', 'Preencha todos os campos corretamente');
       return;
     }
+
+    // CORREÇÃO: Garantir que campos obrigatórios não venham vazios
+    const enderecoFinal = endereco.trim() === '' ? 'Endereço não informado' : endereco;
+    const numeroFinal = numero.trim() === '' ? '0' : numero;
+
+    console.log('🔵 4 - Dados que serão salvos:', {
+      codigoReferencia,
+      nomeFantasia,
+      proprietario,
+      cidade,
+      estado,
+      endereco: enderecoFinal,
+      numero: numeroFinal,
+      email,
+      celular,
+      anotacoes,
+      logo
+    });
     
     try {
       const empresaId = Date.now().toString();
+      console.log('🔵 5 - ID gerado:', empresaId);
+
+      // Verificar se o código já existe
+      const codigoExistente = await db.getAllAsync(
+        'SELECT id FROM empresas WHERE codigo_referencia = ?',
+        [codigoReferencia]
+      );
+
+      if (codigoExistente.length > 0) {
+        Alert.alert('Erro', 'Este código de referência já está cadastrado');
+        return;
+      }
+
+try {
+  const tableInfo = await db.getAllAsync('PRAGMA table_info(empresas)');
+  console.log('📋 Estrutura da tabela empresas:', JSON.stringify(tableInfo, null, 2));
+} catch (error) {
+  console.log('Erro ao obter estrutura:', error);
+}
+      
       await db.runAsync(
         `INSERT INTO empresas (
-          id, codigo_referencia, nome_fantasia, proprietario, cidade, estado,
-          endereco, numero, email, contato, anotacoes, logo, ativo, created_at
+          id, 
+          codigo_referencia, 
+          nome_fantasia, 
+          proprietario, 
+          cidade, 
+          estado, 
+          endereco, 
+          numero, 
+          email, 
+          contato, 
+          anotacoes, 
+          logo, 
+          ativo, 
+          created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           empresaId,
@@ -300,9 +357,9 @@ export default function CadastroEmpresaScreen() {
           nomeFantasia,
           proprietario,
           cidade,
-          estado.toUpperCase(), // Garantir maiúsculas
-          endereco,
-          numero,
+          estado.toUpperCase(),
+          enderecoFinal,
+          numeroFinal,
           email,
           celular,
           anotacoes,
@@ -311,6 +368,8 @@ export default function CadastroEmpresaScreen() {
           new Date().toISOString()
         ]
       );
+
+      console.log('✅ 6 - INSERT executado com sucesso!');
       
       Alert.alert(
         'Sucesso',
@@ -318,7 +377,7 @@ export default function CadastroEmpresaScreen() {
         [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
       );
     } catch (error) {
-      console.error('Erro ao salvar empresa:', error);
+      console.error('❌ 7 - Erro no INSERT:', error);
       Alert.alert('Erro', 'Não foi possível cadastrar a empresa');
     }
   };
@@ -419,6 +478,7 @@ export default function CadastroEmpresaScreen() {
                 {errors.proprietario ? <Text style={styles.errorText}>{errors.proprietario}</Text> : null}
               </View>
 
+              {/* Linha Cidade + Estado */}
               <View style={styles.row}>
                 <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
                   <Text style={styles.label}>
@@ -434,9 +494,6 @@ export default function CadastroEmpresaScreen() {
                       setCidade(text);
                       setErrors(prev => ({ ...prev, cidade: validarCidade(text) }));
                     }}
-                    returnKeyType="next"
-                    onSubmitEditing={() => estadoRef.current?.focus()}
-                    blurOnSubmit={false}
                   />
                   {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
                 </View>
@@ -456,9 +513,6 @@ export default function CadastroEmpresaScreen() {
                       setEstado(text.toUpperCase());
                       setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
                     }}
-                    returnKeyType="next"
-                    onSubmitEditing={() => enderecoRef.current?.focus()}
-                    blurOnSubmit={false}
                   />
                   {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
                 </View>
@@ -478,9 +532,6 @@ export default function CadastroEmpresaScreen() {
                     setEndereco(text);
                     setErrors(prev => ({ ...prev, endereco: validarEndereco(text) }));
                   }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => numeroRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 {errors.endereco ? <Text style={styles.errorText}>{errors.endereco}</Text> : null}
               </View>
@@ -501,12 +552,10 @@ export default function CadastroEmpresaScreen() {
                       setNumero(text);
                       setErrors(prev => ({ ...prev, numero: validarNumero(text) }));
                     }}
-                    returnKeyType="next"
-                    onSubmitEditing={() => emailRef.current?.focus()}
-                    blurOnSubmit={false}
                   />
                   {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
                 </View>
+                <View style={[styles.field, { flex: 1 }]} />
               </View>
 
               <View style={styles.field}>
@@ -525,9 +574,6 @@ export default function CadastroEmpresaScreen() {
                     setEmail(text);
                     setErrors(prev => ({ ...prev, email: validarEmail(text) }));
                   }}
-                  returnKeyType="next"
-                  onSubmitEditing={() => celularRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
@@ -544,9 +590,6 @@ export default function CadastroEmpresaScreen() {
                   keyboardType="numeric"
                   value={celular}
                   onChangeText={handleCelularChange}
-                  returnKeyType="next"
-                  onSubmitEditing={() => codigoRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 <Text style={styles.helperText}>Digite DDD + 9 números (ex: 11999999999)</Text>
                 {errors.celular ? <Text style={styles.errorText}>{errors.celular}</Text> : null}
@@ -564,9 +607,6 @@ export default function CadastroEmpresaScreen() {
                   keyboardType="numeric"
                   value={codigoReferencia}
                   onChangeText={handleCodigoChange}
-                  returnKeyType="next"
-                  onSubmitEditing={() => anotacoesRef.current?.focus()}
-                  blurOnSubmit={false}
                 />
                 <Text style={styles.helperText}>Apenas números</Text>
                 {errors.codigoReferencia ? <Text style={styles.errorText}>{errors.codigoReferencia}</Text> : null}
@@ -584,8 +624,6 @@ export default function CadastroEmpresaScreen() {
                   textAlignVertical="top"
                   value={anotacoes}
                   onChangeText={setAnotacoes}
-                  returnKeyType="done"
-                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
             </View>

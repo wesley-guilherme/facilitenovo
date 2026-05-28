@@ -64,25 +64,25 @@ export default function EmpresasScreen() {
   const [loading, setLoading] = useState(true);
 
   // Carregar empresas do banco de dados
-  const carregarEmpresas = async () => {
-    setLoading(true);
+const carregarEmpresas = async () => {
+  setLoading(true);
+  try {
+    let empresasDb: Empresa[] = [];
     try {
-      let empresasDb: Empresa[] = [];
-      try {
-        const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nome_fantasia ASC');
-        empresasDb = result as Empresa[];
-      } catch (tableError) {
-        console.log('Tabela empresas não encontrada');
-        empresasDb = [];
-      }
-      setEmpresas(empresasDb);
-    } catch (error) {
-      console.error('Erro ao carregar empresas:', error);
-      setEmpresas([]);
-    } finally {
-      setLoading(false);
+      const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nome_fantasia ASC');
+      empresasDb = result as Empresa[];
+    } catch (tableError) {
+      // Tabela ainda não existe - ignorar silenciosamente
+      empresasDb = [];
     }
-  };
+    setEmpresas(empresasDb);
+  } catch (error) {
+    console.error('Erro ao carregar empresas:', error);
+    setEmpresas([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Recarregar quando a tela ganhar foco
   useFocusEffect(
@@ -126,6 +126,7 @@ export default function EmpresasScreen() {
 
   // Navega para edição ao clicar na seta
   const handleEditarPress = (empresa: Empresa) => {
+    console.log('ID enviado para edição:', empresa.id);
     navigation.navigate('EditarEmpresa', { empresa });
   };
 
