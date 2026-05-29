@@ -16,7 +16,7 @@
  * - Anotações (opcional)
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -34,7 +34,7 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as SQLite from 'expo-sqlite';
@@ -75,6 +75,38 @@ export default function CadastroEmpresaScreen() {
   const [celular, setCelular] = useState('');
   const [codigoReferencia, setCodigoReferencia] = useState('');
   const [anotacoes, setAnotacoes] = useState('');
+
+  const limparFormulario = () => {
+  setCodigoReferencia('');
+  setNomeFantasia('');
+  setProprietario('');
+  setCidade('');
+  setEstado('');
+  setEndereco('');
+  setNumero('');
+  setEmail('');
+  setCelular('');
+  setAnotacoes('');
+  setLogo(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      limparFormulario();
+    }, [])
+  )
+
+  setErrors({
+    codigoReferencia: '',
+    nomeFantasia: '',
+    proprietario: '',
+    cidade: '',
+    estado: '',
+    endereco: '',
+    numero: '',
+    email: '',
+    celular: '',
+  });
+};
 
   // Estados de erro
   const [errors, setErrors] = useState({
@@ -333,49 +365,73 @@ try {
 } catch (error) {
   console.log('Erro ao obter estrutura:', error);
 }
-      
-      await db.runAsync(
-        `INSERT INTO empresas (
-          id, 
-          codigo_referencia, 
-          nome_fantasia, 
-          proprietario, 
-          cidade, 
-          estado, 
-          endereco, 
-          numero, 
-          email, 
-          contato, 
-          anotacoes, 
-          logo, 
-          ativo, 
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          empresaId,
-          codigoReferencia,
-          nomeFantasia,
-          proprietario,
-          cidade,
-          estado.toUpperCase(),
-          enderecoFinal,
-          numeroFinal,
-          email,
-          celular,
-          anotacoes,
-          logo,
-          1,
-          new Date().toISOString()
-        ]
-      );
+
+console.log('📦 Valores do INSERT:', [
+  empresaId,
+  codigoReferencia || '',
+  nomeFantasia || '',
+  proprietario || '',
+  cidade || '',
+  (estado || '').toUpperCase(),
+  enderecoFinal || '',
+  numeroFinal || '',
+  email || '',
+  celular || '',
+  anotacoes || '',
+  logo || '',
+  1,
+  new Date().toISOString()
+]);
+
+await db.runAsync(
+  `INSERT INTO empresas (
+    id, 
+    codigo_referencia, 
+    nome_fantasia, 
+    proprietario, 
+    cidade, 
+    estado, 
+    endereco, 
+    numero, 
+    email, 
+    contato, 
+    anotacoes, 
+    logo, 
+    ativo, 
+    created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    empresaId,
+    codigoReferencia || '',
+    nomeFantasia || '',
+    proprietario || '',
+    cidade || '',
+    (estado || '').toUpperCase(),
+    enderecoFinal || '',
+    numeroFinal || '',
+    email || '',
+    celular || '',
+    anotacoes || '',
+    logo || '',
+    1,
+    new Date().toISOString()
+  ]
+);
 
       console.log('✅ 6 - INSERT executado com sucesso!');
       
       Alert.alert(
         'Sucesso',
         'Empresa cadastrada com sucesso!',
-        [{ text: 'OK', onPress: () => navigation.navigate('Empresas') }]
-      );
+        [{ 
+          text: 'OK',
+           onPress: () => {
+            limparFormulario();
+            navigation.navigate('Empresas') 
+          },
+        },
+      ]
+    );
     } catch (error) {
       console.error('❌ 7 - Erro no INSERT:', error);
       Alert.alert('Erro', 'Não foi possível cadastrar a empresa');
@@ -383,6 +439,7 @@ try {
   };
 
   const handleCancelar = () => {
+    limparFormulario();
     navigation.navigate('Empresas');
   };
 
