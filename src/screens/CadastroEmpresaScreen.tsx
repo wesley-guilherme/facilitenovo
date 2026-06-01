@@ -39,6 +39,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as SQLite from 'expo-sqlite';
 import * as ImagePicker from 'expo-image-picker';
+import { db } from '../database/initDatabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -48,7 +49,6 @@ type CadastroEmpresaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamL
 
 export default function CadastroEmpresaScreen() {
   const navigation = useNavigation<CadastroEmpresaScreenNavigationProp>();
-  const db = SQLite.openDatabaseSync('facilite.db');
   
   // Refs para os inputs
   const scrollViewRef = useRef<ScrollView>(null);
@@ -89,11 +89,6 @@ export default function CadastroEmpresaScreen() {
   setAnotacoes('');
   setLogo(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      limparFormulario();
-    }, [])
-  )
 
   setErrors({
     codigoReferencia: '',
@@ -120,6 +115,14 @@ export default function CadastroEmpresaScreen() {
     celular: '',
     codigoReferencia: '',
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      limparFormulario();
+    }, [])
+  );
+
+
 
   // Função para validar nome fantasia
   const validarNomeFantasia = (texto: string) => {
@@ -347,41 +350,63 @@ export default function CadastroEmpresaScreen() {
     try {
       const empresaId = Date.now().toString();
       console.log('🔵 5 - ID gerado:', empresaId);
-
+    
+       console.log('🔍 Antes SELECT');
       // Verificar se o código já existe
       const codigoExistente = await db.getAllAsync(
         'SELECT id FROM empresas WHERE codigo_referencia = ?',
         [codigoReferencia]
       );
 
+      console.log('🔍 Depois SELECT');
+      console.log('📋 Resultado SELECT:', codigoExistente);
+
       if (codigoExistente.length > 0) {
         Alert.alert('Erro', 'Este código de referência já está cadastrado');
         return;
       }
 
+ console.log('🔍 Antes PRAGMA');     
 try {
   const tableInfo = await db.getAllAsync('PRAGMA table_info(empresas)');
   console.log('📋 Estrutura da tabela empresas:', JSON.stringify(tableInfo, null, 2));
 } catch (error) {
   console.log('Erro ao obter estrutura:', error);
 }
+console.log('🔍 Depois PRAGMA');
 
-console.log('📦 Valores do INSERT:', [
+console.log('🔎 empresaId:', empresaId);
+console.log('🔎 codigoReferencia:', codigoReferencia);
+console.log('🔎 nomeFantasia:', nomeFantasia);
+console.log('🔎 proprietario:', proprietario);
+console.log('🔎 cidade:', cidade);
+console.log('🔎 estado:', estado);
+console.log('🔎 enderecoFinal:', enderecoFinal);
+console.log('🔎 numeroFinal:', numeroFinal);
+console.log('🔎 email:', email);
+console.log('🔎 celular:', celular);
+console.log('🔎 anotacoes:', anotacoes);
+console.log('🔎 logo:', logo);
+
+const valoresInsert = [
   empresaId,
-  codigoReferencia || '',
-  nomeFantasia || '',
-  proprietario || '',
-  cidade || '',
-  (estado || '').toUpperCase(),
-  enderecoFinal || '',
-  numeroFinal || '',
-  email || '',
-  celular || '',
-  anotacoes || '',
-  logo || '',
+  codigoReferencia,
+  nomeFantasia,
+  proprietario,
+  cidade,
+  estado?.toUpperCase(),
+  enderecoFinal,
+  numeroFinal,
+  email,
+  celular,
+  anotacoes,
+  logo ?? '',
   1,
   new Date().toISOString()
-]);
+];
+
+console.log('📦 Valores do INSERT:', JSON.stringify(valoresInsert, null, 2));
+
 
 await db.runAsync(
   `INSERT INTO empresas (
@@ -400,25 +425,10 @@ await db.runAsync(
     ativo, 
     created_at
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  [
-    empresaId,
-    codigoReferencia || '',
-    nomeFantasia || '',
-    proprietario || '',
-    cidade || '',
-    (estado || '').toUpperCase(),
-    enderecoFinal || '',
-    numeroFinal || '',
-    email || '',
-    celular || '',
-    anotacoes || '',
-    logo || '',
-    1,
-    new Date().toISOString()
-  ]
+   valoresInsert
 );
 
-      console.log('✅ 6 - INSERT executado com sucesso!');
+
       
       Alert.alert(
         'Sucesso',

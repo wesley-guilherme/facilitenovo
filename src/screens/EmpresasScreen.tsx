@@ -32,6 +32,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as SQLite from 'expo-sqlite';
+import { db } from '../database/initDatabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -57,7 +58,6 @@ type Empresa = {
 
 export default function EmpresasScreen() {
   const navigation = useNavigation<EmpresasScreenNavigationProp>();
-  const db = SQLite.openDatabaseSync('facilite.db');
   
   const [pesquisa, setPesquisa] = useState('');
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -65,14 +65,19 @@ export default function EmpresasScreen() {
 
   // Carregar empresas do banco de dados
 const carregarEmpresas = async () => {
+  console.log('📋 Carregando empresas...');
   setLoading(true);
   try {
     let empresasDb: Empresa[] = [];
     try {
       const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nome_fantasia ASC');
       empresasDb = result as Empresa[];
+
+console.log('📋 Empresas encontradas:', empresasDb.length);
+
     } catch (tableError) {
       // Tabela ainda não existe - ignorar silenciosamente
+       console.log('⚠️ Erro ao consultar tabela:', tableError);
       empresasDb = [];
     }
     setEmpresas(empresasDb);
@@ -87,6 +92,7 @@ const carregarEmpresas = async () => {
   // Recarregar quando a tela ganhar foco
   useFocusEffect(
     useCallback(() => {
+      console.log('🔄 EmpresasScreen ganhou foco');
       carregarEmpresas();
     }, [])
   );

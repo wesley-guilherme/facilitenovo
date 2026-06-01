@@ -18,7 +18,7 @@
  * - Excluir Cadastro (botão vermelho)
  */
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -42,7 +42,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as ImagePicker from 'expo-image-picker';
 import * as SQLite from 'expo-sqlite';
-
+import { db } from '../database/initDatabase'
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const HEADER_HEIGHT = 56;
@@ -53,26 +53,27 @@ type EditarEmpresaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamLis
 type EmpresaData = {
   id: string;
   logo: string | null;
-  nomeFantasia: string;
+  nome_fantasia: string;
   proprietario: string;
   cidade: string;
   estado: string;
   endereco: string;
   numero: string;
   email: string;
-  celular: string;
-  codigoReferencia: string;
+  contato: string;
+  codigo_referencia: string;
   anotacoes: string;
-  ativo: boolean;
+  ativo: number;
 };
 
 export default function EditarEmpresaScreen() {
   const navigation = useNavigation<EditarEmpresaScreenNavigationProp>();
   const route = useRoute();
-  const db = SQLite.openDatabaseSync('facilite.db');
   
   // Recebe os dados da empresa via parâmetro de navegação
   const empresa = (route.params as any)?.empresa as EmpresaData;
+  console.log('📦 Empresa recebida para edição:', empresa.id);
+  console.log('📝 Nome recebido:', empresa.nome_fantasia);
   
   // Refs para os inputs
   const scrollViewRef = useRef<ScrollView>(null);
@@ -87,19 +88,39 @@ export default function EditarEmpresaScreen() {
   const codigoRef = useRef<TextInput>(null);
   const anotacoesRef = useRef<TextInput>(null);
 
-  // Estados do formulário (preenchidos com os dados da empresa)
-  const [logo, setLogo] = useState<string | null>(empresa?.logo || null);
-  const [nomeFantasia, setNomeFantasia] = useState(empresa?.nomeFantasia || '');
-  const [proprietario, setProprietario] = useState(empresa?.proprietario || '');
-  const [cidade, setCidade] = useState(empresa?.cidade || '');
-  const [estado, setEstado] = useState(empresa?.estado || '');
-  const [endereco, setEndereco] = useState(empresa?.endereco || '');
-  const [numero, setNumero] = useState(empresa?.numero || '');
-  const [email, setEmail] = useState(empresa?.email || '');
-  const [celular, setCelular] = useState(empresa?.celular || '');
-  const [codigoReferencia, setCodigoReferencia] = useState(empresa?.codigoReferencia || '');
-  const [anotacoes, setAnotacoes] = useState(empresa?.anotacoes || '');
-  const [desativado, setDesativado] = useState(empresa?.ativo === false || false);
+const [logo, setLogo] = useState<string | null>(null);
+const [nomeFantasia, setNomeFantasia] = useState('');
+const [proprietario, setProprietario] = useState('');
+const [cidade, setCidade] = useState('');
+const [estado, setEstado] = useState('');
+const [endereco, setEndereco] = useState('');
+const [numero, setNumero] = useState('');
+const [email, setEmail] = useState('');
+const [celular, setCelular] = useState('');
+const [codigoReferencia, setCodigoReferencia] = useState('');
+const [anotacoes, setAnotacoes] = useState('');
+const [desativado, setDesativado] = useState(false);
+
+useEffect(() => {
+  if (!empresa) return;
+
+  console.log('🔄 Atualizando formulário:', empresa.id);
+
+  setLogo(empresa.logo || null);
+  setNomeFantasia(empresa.nome_fantasia || '');
+  setProprietario(empresa.proprietario || '');
+  setCidade(empresa.cidade || '');
+  setEstado(empresa.estado || '');
+  setEndereco(empresa.endereco || '');
+  setNumero(empresa.numero || '');
+  setEmail(empresa.email || '');
+  setCelular(empresa.contato || '');
+  setCodigoReferencia(empresa.codigo_referencia || '');
+  setAnotacoes(empresa.anotacoes || '');
+  setDesativado(empresa.ativo !== 1);
+
+}, [empresa]);
+
 
   // Estados de erro
   const [errors, setErrors] = useState({

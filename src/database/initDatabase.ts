@@ -6,8 +6,9 @@
 
 import * as SQLite from 'expo-sqlite';
 
+export const db = SQLite.openDatabaseSync('facilite.db');
+
 export const initDatabase = async () => {
-  const db = SQLite.openDatabaseSync('facilite.db');
   
   try {
     // Verificar e adicionar coluna estado na tabela empresas se necessário
