@@ -35,7 +35,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useConsultor } from '../contexts/ConsultorContext';
 import { useEmpresa } from '../contexts/EmpresaContext';
-import * as SQLite from 'expo-sqlite';
+import { db } from '../database/initDatabase'
 import SignatureScreen from 'react-native-signature-canvas';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -71,7 +71,7 @@ export default function NovaVisitaScreen() {
   const route = useRoute();
   const { consultor } = useConsultor();
   const { empresa: empresaConsultor } = useEmpresa();
-  const db = SQLite.openDatabaseSync('facilite.db');
+
   
   // Estados das abas
   const [abaAtiva, setAbaAtiva] = useState<'info' | 'assinatura'>('info');

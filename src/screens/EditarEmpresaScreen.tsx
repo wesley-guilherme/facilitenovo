@@ -41,7 +41,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as ImagePicker from 'expo-image-picker';
-import * as SQLite from 'expo-sqlite';
 import { db } from '../database/initDatabase'
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -159,15 +158,26 @@ useEffect(() => {
     return '';
   };
 
-  const validarEstado = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Estado é obrigatório';
-    }
-    if (texto.length !== 2) {
-      return 'Use a sigla de 2 letras (ex: SP)';
-    }
-    return '';
-  };
+  const ESTADOS_BRASIL = [
+  'AC','AL','AP','AM','BA','CE','DF','ES',
+  'GO','MA','MT','MS','MG','PA','PB','PR',
+  'PE','PI','RJ','RN','RS','RO','RR','SC',
+  'SP','SE','TO'
+];
+
+const validarEstado = (texto: string) => {
+  const uf = texto.trim().toUpperCase();
+
+  if (!uf) {
+    return 'Estado é obrigatório';
+  }
+
+  if (!ESTADOS_BRASIL.includes(uf)) {
+    return 'UF inválida';
+  }
+
+  return '';
+};
 
   // Função para validar endereço
   const validarEndereco = (texto: string) => {
@@ -570,8 +580,11 @@ useEffect(() => {
                     maxLength={2}
                     value={estado}
                     onChangeText={(text) => {
-                      setEstado(text.toUpperCase());
-                      setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
+                      const uf = text.toUpperCase().replace(/[^A-Z]/g, '');
+                      setEstado(uf);
+                      setErrors(prev => ({ ...prev, 
+                        estado: validarEstado(uf) 
+                      }));
                     }}
                   />
                   {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}

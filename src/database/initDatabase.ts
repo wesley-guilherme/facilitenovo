@@ -1,29 +1,50 @@
 /**
  * INICIALIZAÇÃO DO BANCO DE DADOS
- * 
+ *
  * Cria todas as tabelas necessárias para o aplicativo
  */
 
 import * as SQLite from 'expo-sqlite';
 
+// UMA ÚNICA INSTÂNCIA DO BANCO
 export const db = SQLite.openDatabaseSync('facilite.db');
 
 export const initDatabase = async () => {
-  
   try {
-    // Verificar e adicionar coluna estado na tabela empresas se necessário
+
+    // Habilita Foreign Keys
+    await db.execAsync(`
+      PRAGMA foreign_keys = ON;
+    `);
+
+    console.log('✅ Foreign Keys habilitado');
+
+    // Verificar se a tabela empresas já existe
     try {
-      const tableInfo = await db.getAllAsync('PRAGMA table_info(empresas)');
-      const hasEstado = (tableInfo as any[]).some(col => col.name === 'estado');
+      const tableInfo = await db.getAllAsync(
+        'PRAGMA table_info(empresas)'
+      );
+
+      const hasEstado = (tableInfo as any[]).some(
+        (col) => col.name === 'estado'
+      );
+
       if (!hasEstado) {
-        await db.execAsync('ALTER TABLE empresas ADD COLUMN estado TEXT DEFAULT "SP"');
-        console.log('✅ Coluna estado adicionada à tabela empresas');
+        await db.execAsync(`
+          ALTER TABLE empresas
+          ADD COLUMN estado TEXT DEFAULT 'SP'
+        `);
+
+        console.log('✅ Coluna estado adicionada');
       }
+
     } catch (error) {
-      console.log('Tabela empresas não existe ainda, será criada');
+      console.log('Tabela empresas ainda não existe');
     }
-    
-    // Tabela de empresas
+
+    // ==========================
+    // TABELA EMPRESAS
+    // ==========================
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS empresas (
         id TEXT PRIMARY KEY,
@@ -42,10 +63,12 @@ export const initDatabase = async () => {
         rota TEXT,
         created_at TEXT,
         updated_at TEXT
-      )
+      );
     `);
-    
-    // Tabela de visitas
+
+    // ==========================
+    // TABELA VISITAS
+    // ==========================
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS visitas (
         id TEXT PRIMARY KEY,
@@ -58,41 +81,61 @@ export const initDatabase = async () => {
         assinatura TEXT,
         created_at TEXT,
         updated_at TEXT,
-        FOREIGN KEY (empresa_id) REFERENCES empresas (id) ON DELETE CASCADE
-      )
+        FOREIGN KEY (empresa_id)
+          REFERENCES empresas(id)
+          ON DELETE CASCADE
+      );
     `);
-    
-    // Tabela de configuracoes
+
+    // ==========================
+    // TABELA CONFIGURAÇÕES
+    // ==========================
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS configuracoes (
         chave TEXT PRIMARY KEY,
         valor TEXT NOT NULL,
         updated_at TEXT
-      )
+      );
     `);
-    
-    // Tabela de textos_predefinidos
+
+    // ==========================
+    // TABELA TEXTOS
+    // ==========================
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS textos_predefinidos (
         id TEXT PRIMARY KEY,
         texto TEXT NOT NULL,
         created_at TEXT,
         updated_at TEXT
-      )
+      );
     `);
-    
-    // Inserir configuração padrão se não existir
-    const configExist = await db.getAllAsync('SELECT * FROM configuracoes WHERE chave = "dias_aviso"');
+
+    // Configuração padrão
+    const configExist = await db.getAllAsync(
+      'SELECT * FROM configuracoes WHERE chave = ?',
+      ['dias_aviso']
+    );
+
     if (configExist.length === 0) {
-      await db.runAsync('INSERT INTO configuracoes (chave, valor, updated_at) VALUES (?, ?, ?)', 
-        ['dias_aviso', '30', new Date().toISOString()]);
+      await db.runAsync(
+        `INSERT INTO configuracoes
+        (chave, valor, updated_at)
+        VALUES (?, ?, ?)`,
+        [
+          'dias_aviso',
+          '30',
+          new Date().toISOString()
+        ]
+      );
+
+      console.log('✅ Configuração padrão criada');
     }
-    
-    console.log('✅ Banco de dados inicializado com sucesso!');
-    
+
+    console.log('✅ Banco inicializado com sucesso');
+
   } catch (error) {
-    console.error('❌ Erro ao inicializar banco de dados:', error);
+    console.error('❌ Erro ao inicializar banco:', error);
   }
-  
+
   return db;
 };

@@ -37,8 +37,8 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-import * as SQLite from 'expo-sqlite';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system'
 import { db } from '../database/initDatabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -149,15 +149,31 @@ export default function CadastroEmpresaScreen() {
   };
 
   // Função para validar estado
+
+const ESTADOS_BRASIL = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES',
+  'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR',
+  'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
+  'SP', 'SE', 'TO'
+];
+  
   const validarEstado = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Estado é obrigatório';
-    }
-    if (texto.length !== 2) {
-      return 'Use a sigla de 2 letras (ex: SP)';
-    }
-    return '';
-  };
+  const uf = texto.trim().toUpperCase();
+
+  if (uf === '') {
+    return 'Estado é obrigatório';
+  }
+
+  if (uf.length !== 2) {
+    return 'Use a sigla de 2 letras';
+  }
+
+  if (!ESTADOS_BRASIL.includes(uf)) {
+    return 'UF inválida';
+  }
+
+  return '';
+};
 
   // Função para validar endereço
   const validarEndereco = (texto: string) => {
@@ -267,17 +283,18 @@ export default function CadastroEmpresaScreen() {
       return;
     }
     
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
     
-    if (!result.canceled) {
-      setLogo(result.assets[0].uri);
-    }
-  };
+const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.8,
+  });
+
+  if (!result.canceled) {
+    setLogo(result.assets[0].uri);
+  }
+};
 
   const handleExcluirLogo = () => {
     Alert.alert(
@@ -577,8 +594,11 @@ await db.runAsync(
                     maxLength={2}
                     value={estado}
                     onChangeText={(text) => {
-                      setEstado(text.toUpperCase());
-                      setErrors(prev => ({ ...prev, estado: validarEstado(text) }));
+                      const uf = text.toUpperCase().replace(/[^A-Z]/g, '');
+                      setEstado(uf);
+                      setErrors(prev => ({ ...prev, 
+                        estado: validarEstado(uf) 
+                      }));
                     }}
                   />
                   {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
