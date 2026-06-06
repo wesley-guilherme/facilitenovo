@@ -37,6 +37,30 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
+
+import {
+  validarNomeFantasia,
+  validarProprietario,
+  validarCidade,
+  validarEstado,
+  validarEndereco,
+  validarNumero,
+  validarEmail,
+  validarCelular,
+  validarCodigoReferencia
+} from '../utils/validator'
+
+import {
+  formatarCelular,
+  formatarUF,
+  normalizarTexto,
+  normalizarEmail,
+  normalizarCodigoReferencia,
+  limitarCodigoReferencia
+} from '../utils/formatters'
+
+import { salvarLogo, excluirImagem } from '../services/imageService';
+
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
@@ -109,7 +133,7 @@ useEffect(() => {
   setNomeFantasia(empresa.nome_fantasia || '');
   setProprietario(empresa.proprietario || '');
   setCidade(empresa.cidade || '');
-  setEstado(empresa.estado || '');
+  setEstado(formatarUF(empresa.estado || ''));
   setEndereco(empresa.endereco || '');
   setNumero(empresa.numero || '');
   setEmail(empresa.email || '');
@@ -134,90 +158,6 @@ useEffect(() => {
     codigoReferencia: '',
   });
 
-  // Função para validar nome fantasia
-  const validarNomeFantasia = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Nome fantasia é obrigatório';
-    }
-    return '';
-  };
-
-  // Função para validar proprietário
-  const validarProprietario = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Proprietário é obrigatório';
-    }
-    return '';
-  };
-
-  // Função para validar cidade
-  const validarCidade = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Cidade é obrigatória';
-    }
-    return '';
-  };
-
-  const ESTADOS_BRASIL = [
-  'AC','AL','AP','AM','BA','CE','DF','ES',
-  'GO','MA','MT','MS','MG','PA','PB','PR',
-  'PE','PI','RJ','RN','RS','RO','RR','SC',
-  'SP','SE','TO'
-];
-
-const validarEstado = (texto: string) => {
-  const uf = texto.trim().toUpperCase();
-
-  if (!uf) {
-    return 'Estado é obrigatório';
-  }
-
-  if (!ESTADOS_BRASIL.includes(uf)) {
-    return 'UF inválida';
-  }
-
-  return '';
-};
-
-  // Função para validar endereço
-  const validarEndereco = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Endereço é obrigatório';
-    }
-    return '';
-  };
-
-  // Função para validar número
-  const validarNumero = (texto: string) => {
-    if (texto.trim() === '') {
-      return 'Número é obrigatório';
-    }
-    return '';
-  };
-
-  // Função para validar email
-  const validarEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (email.trim() === '') {
-      return 'E-mail é obrigatório';
-    }
-    if (!regex.test(email)) {
-      return 'E-mail inválido';
-    }
-    return '';
-  };
-
-  // Função para validar código de referência (apenas números)
-  const validarCodigoReferencia = (texto: string) => {
-    const regex = /^\d*$/;
-    if (texto.trim() === '') {
-      return 'Código de referência é obrigatório';
-    }
-    if (!regex.test(texto)) {
-      return 'Código deve conter apenas números';
-    }
-    return '';
-  };
 
   // Função para formatar celular
   const formatarCelular = (texto: string) => {
@@ -240,17 +180,6 @@ const validarEstado = (texto: string) => {
     return formatado;
   };
 
-  // Função para validar celular
-  const validarCelular = (celular: string) => {
-    const numeros = celular.replace(/\D/g, '');
-    if (numeros.length === 0) {
-      return 'Celular é obrigatório';
-    }
-    if (numeros.length !== 11) {
-      return 'Celular deve ter 11 dígitos (DDD + 9 números)';
-    }
-    return '';
-  };
 
   const handleCelularChange = (texto: string) => {
     const formatado = formatarCelular(texto);
@@ -266,53 +195,120 @@ const validarEstado = (texto: string) => {
     }
   };
 
-  const handleCodigoChange = (texto: string) => {
-    const regex = /^\d*$/;
-    if (regex.test(texto) || texto === '') {
-      setCodigoReferencia(texto);
-      if (texto.trim() === '') {
-        setErrors(prev => ({ ...prev, codigoReferencia: 'Código de referência é obrigatório' }));
-      } else {
-        setErrors(prev => ({ ...prev, codigoReferencia: '' }));
-      }
-    }
-  };
+const handleCodigoChange = (texto: string) => {
+  const codigo = limitarCodigoReferencia(texto);
+
+  setCodigoReferencia(codigo);
+
+  if (!codigo) {
+    setErrors(prev => ({
+      ...prev,
+      codigoReferencia: 'Código de referência é obrigatório'
+    }));
+  } else {
+    setErrors(prev => ({
+      ...prev,
+      codigoReferencia: ''
+    }));
+  }
+};
 
   // Função para selecionar logo
-  const handleSelecionarLogo = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à galeria para adicionar logo');
-      return;
-    }
-    
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+const handleSelecionarLogo = async () => {
+  const { status } =
+    await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (status !== 'granted') {
+    Alert.alert(
+      'Permissão negada',
+      'Precisamos de acesso à galeria para adicionar logo'
+    );
+    return;
+  }
+
+  const result =
+    await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-    
-    if (!result.canceled) {
-      setLogo(result.assets[0].uri);
-    }
-  };
 
-  const handleExcluirLogo = () => {
-    Alert.alert(
-      'Excluir Logo',
-      'Tem certeza que deseja remover a logo?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Excluir', 
-          style: 'destructive',
-          onPress: () => setLogo(null)
+  if (!result.canceled) {
+    try {
+
+      const logoAntiga = logo;
+
+      const caminhoFinal =
+        await salvarLogo(
+          result.assets[0].uri
+        );
+
+      if (
+        logoAntiga &&
+        logoAntiga !== caminhoFinal
+      ) {
+        await excluirImagem(logoAntiga);
+      }
+
+      setLogo(caminhoFinal);
+
+      console.log(
+        '🏢 Logo salva em:',
+        caminhoFinal
+      );
+
+      setLogo(caminhoFinal);
+
+    } catch (error) {
+
+      console.error(
+        'Erro ao salvar logo:',
+        error
+      );
+
+      Alert.alert(
+        'Erro',
+        'Não foi possível salvar a logo.'
+      );
+    }
+  }
+};
+
+const handleExcluirLogo = () => {
+  Alert.alert(
+    'Excluir Logo',
+    'Tem certeza que deseja remover a logo?',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+
+            if (logo) {
+              await excluirImagem(logo);
+            }
+
+            setLogo(null);
+
+          } catch (error) {
+            console.error(
+              'Erro ao excluir logo:',
+              error
+            );
+
+            Alert.alert(
+              'Erro',
+              'Não foi possível excluir a logo.'
+            );
+          }
         }
-      ]
-    );
-  };
+      }
+    ]
+  );
+};
 
   // Função para excluir o cadastro completo
   const handleExcluirCadastro = () => {
@@ -344,6 +340,10 @@ const validarEstado = (texto: string) => {
 
   // CORREÇÃO: Função handleSalvar com UPDATE no banco
   const handleSalvar = async () => {
+        if (!empresa) {
+      Alert.alert('Erro', 'Empresa não encontrada.');
+      return;
+    }
     console.log('🔵 1 - Iniciou handleSalvar');
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
@@ -389,10 +389,39 @@ const validarEstado = (texto: string) => {
     logo,
     desativado,
     empresaId: empresa?.id
-  });   
+  }); 
+  
+  const nomeFantasiaFinal = normalizarTexto(nomeFantasia);
+  const proprietarioFinal = normalizarTexto(proprietario);
+  const cidadeFinal = normalizarTexto(cidade);
+  const enderecoFinal = normalizarTexto(endereco);
+  const numeroFinal = numero.trim();
+  const emailFinal = normalizarEmail(email);
+  const anotacoesFinal = normalizarTexto(anotacoes);
+
+
 
     try {
+
       console.log('🔵 6 - Tentando executar UPDATE...');
+        const codigoExistente = await db.getAllAsync(
+        `SELECT id
+        FROM empresas
+        WHERE codigo_referencia = ?
+        AND id <> ?`,
+        [
+          normalizarCodigoReferencia(codigoReferencia),
+          empresa.id
+        ]
+      );
+
+      if (codigoExistente.length > 0) {
+        Alert.alert(
+          'Erro',
+          'Já existe uma empresa com este código de referência.'
+        );
+        return;
+      }
       await db.runAsync(
         `UPDATE empresas SET 
           codigo_referencia = ?, 
@@ -410,16 +439,16 @@ const validarEstado = (texto: string) => {
           updated_at = ?
         WHERE id = ?`,
         [
-          codigoReferencia,
-          nomeFantasia,
-          proprietario,
-          cidade,
-          estado.toUpperCase(),
-          endereco,
-          numero,
-          email,
+          normalizarCodigoReferencia(codigoReferencia),
+          nomeFantasiaFinal,
+          proprietarioFinal,
+          cidadeFinal,
+          formatarUF(estado),
+          enderecoFinal,
+          numeroFinal,
+          emailFinal,
           celular,
-          anotacoes,
+          anotacoesFinal,
           logo,
           desativado ? 0 : 1,
           new Date().toISOString(),
@@ -580,9 +609,10 @@ const validarEstado = (texto: string) => {
                     maxLength={2}
                     value={estado}
                     onChangeText={(text) => {
-                      const uf = text.toUpperCase().replace(/[^A-Z]/g, '');
+                      const uf = formatarUF(text);
                       setEstado(uf);
-                      setErrors(prev => ({ ...prev, 
+                      setErrors(prev => 
+                        ({ ...prev, 
                         estado: validarEstado(uf) 
                       }));
                     }}

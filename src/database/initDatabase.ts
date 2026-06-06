@@ -109,6 +109,23 @@ export const initDatabase = async () => {
         updated_at TEXT
       );
     `);
+  
+  // ==========================
+  // TABELA CONSULTOR
+  // ==========================
+await db.execAsync(`
+  CREATE TABLE IF NOT EXISTS consultor (
+    id TEXT PRIMARY KEY,
+    nome TEXT,
+    email TEXT,
+    whatsapp TEXT,
+    empresa TEXT,
+    rota TEXT,
+    foto TEXT,
+    created_at TEXT,
+    updated_at TEXT
+  );
+`);
 
     // Configuração padrão
     const configExist = await db.getAllAsync(
@@ -126,9 +143,40 @@ export const initDatabase = async () => {
           '30',
           new Date().toISOString()
         ]
+      );  
+      console.log('✅ Configuração padrão criada');
+    }
+  
+// Verifica se já existe consultor
+    const consultorExistente = await db.getAllAsync(
+      'SELECT id FROM consultor LIMIT 1'
+    );
+
+    if (consultorExistente.length === 0) {
+      await db.runAsync(
+        `INSERT INTO consultor (
+          id,
+          nome,
+          email,
+          whatsapp,
+          empresa,
+          rota,
+          foto,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          '1',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          new Date().toISOString()
+        ]
       );
 
-      console.log('✅ Configuração padrão criada');
+      console.log('✅ Registro inicial do consultor criado');
     }
 
     console.log('✅ Banco inicializado com sucesso');
@@ -139,3 +187,4 @@ export const initDatabase = async () => {
 
   return db;
 };
+

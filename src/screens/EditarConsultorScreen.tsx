@@ -37,6 +37,8 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useConsultor } from '../contexts/ConsultorContext';
 import * as ImagePicker from 'expo-image-picker';
+import { ConsultorRepository } from '../database/consultorRepository';
+import { salvarPerfil, excluirImagem } from '../services/imageService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -136,25 +138,60 @@ export default function EditarConsultorScreen() {
     return '';
   };
 
-  const handleSelecionarFoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à galeria para adicionar foto');
-      return;
-    }
-    
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+const handleSelecionarFoto = async () => {
+  const { status } =
+    await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (status !== 'granted') {
+    Alert.alert(
+      'Permissão negada',
+      'Precisamos de acesso à galeria para adicionar foto'
+    );
+    return;
+  }
+
+  const result =
+    await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-    
-    if (!result.canceled) {
-      setFoto(result.assets[0].uri);
+
+  if (!result.canceled) {
+    try {
+      const fotoAntiga = foto;
+
+      const caminhoFinal =
+        await salvarPerfil(
+          result.assets[0].uri
+        );
+
+      console.log(
+        '📸 Foto salva em:',
+        caminhoFinal
+      );
+      setFoto(caminhoFinal);
+
+      if (fotoAntiga) {
+        await excluirImagem(fotoAntiga);
+      }
+
+      setFoto(caminhoFinal);
+
+    } catch (error) {
+      console.error(
+        'Erro ao salvar foto:',
+        error
+      );
+
+      Alert.alert(
+        'Erro',
+        'Não foi possível salvar a foto.'
+      );
     }
-  };
+  }
+};
 
   const handleExcluirFoto = () => {
     Alert.alert(
@@ -194,7 +231,7 @@ export default function EditarConsultorScreen() {
     );
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     const nomeError = validarNome(nome);
     const emailError = validarEmail(email);
     const rotaError = validarRota(rota);
@@ -214,13 +251,40 @@ export default function EditarConsultorScreen() {
     }
     
     // Atualizar o contexto com os novos dados (consultor sempre ativo)
-    atualizarConsultor({
-      nome,
-      email,
-      whatsapp,
-      rota,
-      foto
-    });
+    try {
+
+      await ConsultorRepository.salvar(
+        nome,
+        email,
+        whatsapp,
+        '',
+        rota,
+        foto
+      );
+      console.log('✅ Consultor salvo no banco');
+
+      atualizarConsultor({
+        nome,
+        email,
+        whatsapp,
+        rota,
+        foto
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Erro ao salvar consultor:',
+        error
+      );
+
+      Alert.alert(
+        'Erro',
+        'Não foi possível salvar o perfil.'
+      );
+
+      return;
+    }
     
     Alert.alert(
       'Sucesso',
