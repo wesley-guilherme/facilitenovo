@@ -38,6 +38,8 @@ import {
   Dimensions,
 } from 'react-native';
 
+import { EmpresaRepository } from '../database/empresaRepository';
+
 import {
   validarNomeFantasia,
   validarProprietario,
@@ -344,7 +346,6 @@ const handleExcluirLogo = () => {
       Alert.alert('Erro', 'Empresa não encontrada.');
       return;
     }
-    console.log('🔵 1 - Iniciou handleSalvar');
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
     const cidadeError = validarCidade(cidade);
@@ -366,30 +367,11 @@ const handleExcluirLogo = () => {
       celular: celularError,
       codigoReferencia: codigoError,
     });
-
-    console.log('🔵 2 - Validações concluídas');
     
     if (nomeError || proprietarioError || cidadeError || estadoError || enderecoError || numeroError || emailError || celularError || codigoError) {
       Alert.alert('Erro', 'Preencha todos os campos corretamente');
       return;
     }
-    
- console.log('🔵 4 - Validação passou, ID da empresa:', empresa?.id);
-  console.log('🔵 5 - Dados que serão enviados:', {
-    codigoReferencia,
-    nomeFantasia,
-    proprietario,
-    cidade,
-    estado,
-    endereco,
-    numero,
-    email,
-    celular,
-    anotacoes,
-    logo,
-    desativado,
-    empresaId: empresa?.id
-  }); 
   
   const nomeFantasiaFinal = normalizarTexto(nomeFantasia);
   const proprietarioFinal = normalizarTexto(proprietario);
@@ -402,59 +384,44 @@ const handleExcluirLogo = () => {
 
 
     try {
+    const codigoExistente =
+  await EmpresaRepository.existeCodigoEdicao(
+    normalizarCodigoReferencia(
+      codigoReferencia
+    ),
+    empresa.id
+  );
 
-      console.log('🔵 6 - Tentando executar UPDATE...');
-        const codigoExistente = await db.getAllAsync(
-        `SELECT id
-        FROM empresas
-        WHERE codigo_referencia = ?
-        AND id <> ?`,
-        [
-          normalizarCodigoReferencia(codigoReferencia),
-          empresa.id
-        ]
-      );
-
-      if (codigoExistente.length > 0) {
+      if (codigoExistente) {
         Alert.alert(
           'Erro',
           'Já existe uma empresa com este código de referência.'
         );
         return;
       }
-      await db.runAsync(
-        `UPDATE empresas SET 
-          codigo_referencia = ?, 
-          nome_fantasia = ?, 
-          proprietario = ?, 
-          cidade = ?, 
-          estado = ?, 
-          endereco = ?, 
-          numero = ?, 
-          email = ?, 
-          contato = ?, 
-          anotacoes = ?, 
-          logo = ?, 
-          ativo = ?, 
-          updated_at = ?
-        WHERE id = ?`,
-        [
-          normalizarCodigoReferencia(codigoReferencia),
-          nomeFantasiaFinal,
-          proprietarioFinal,
-          cidadeFinal,
-          formatarUF(estado),
-          enderecoFinal,
-          numeroFinal,
-          emailFinal,
-          celular,
-          anotacoesFinal,
-          logo,
-          desativado ? 0 : 1,
-          new Date().toISOString(),
-          empresa.id
-        ]
-      );
+
+          const valoresUpdate = [
+        normalizarCodigoReferencia(
+          codigoReferencia
+        ),
+        nomeFantasiaFinal,
+        proprietarioFinal,
+        cidadeFinal,
+        formatarUF(estado),
+        enderecoFinal,
+        numeroFinal,
+        emailFinal,
+        celular,
+        anotacoesFinal,
+        logo,
+        desativado ? 0 : 1,
+        new Date().toISOString(),
+        empresa.id
+      ];  
+
+     await EmpresaRepository.atualizarEmpresa(
+          valoresUpdate
+        ); 
 
       console.log('✅ 7 - UPDATE executado com sucesso!');
       

@@ -253,13 +253,18 @@ const handleSelecionarFoto = async () => {
     // Atualizar o contexto com os novos dados (consultor sempre ativo)
     try {
 
-      await ConsultorRepository.salvar(
+      const valoresConsultor = [
         nome,
         email,
         whatsapp,
         '',
         rota,
-        foto
+        foto,
+        new Date().toISOString()
+    ];
+      
+      await ConsultorRepository.salvar(
+        valoresConsultor
       );
       console.log('✅ Consultor salvo no banco');
 

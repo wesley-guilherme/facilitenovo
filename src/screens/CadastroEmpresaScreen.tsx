@@ -35,6 +35,8 @@ import {
   Dimensions,
 } from 'react-native';
 
+import { EmpresaRepository } from '../database/empresaRepository';
+
 import {
   validarNomeFantasia,
   validarProprietario,
@@ -269,10 +271,7 @@ const handleExcluirLogo = () => {
 };
 
   const handleSalvar = async () => {
-
-    console.log('🔵 1 - Iniciou cadastro');
-
-    
+   
     const nomeError = validarNomeFantasia(nomeFantasia);
     const proprietarioError = validarProprietario(proprietario);
     const cidadeError = validarCidade(cidade);
@@ -294,8 +293,6 @@ const handleExcluirLogo = () => {
       celular: celularError,
       codigoReferencia: codigoError,
     });
-
-    console.log('🔵 2 - Validações concluídas');
     
     if (nomeError || proprietarioError || cidadeError || estadoError || enderecoError || numeroError || emailError || celularError || codigoError) {
       console.log('🔴 3 - Erro de validação');
@@ -311,61 +308,23 @@ const handleExcluirLogo = () => {
     const emailFinal = normalizarEmail(email);
     const codigoReferenciaFinal = normalizarCodigoReferencia(codigoReferencia);
     const anotacoesFinal = normalizarTexto(anotacoes);
-
-    console.log('🔵 4 - Dados que serão salvos:', {
-      codigoReferencia,
-      nomeFantasia,
-      proprietario,
-      cidade,
-      estado,
-      endereco: enderecoFinal,
-      numero: numeroFinal,
-      email,
-      celular,
-      anotacoes,
-      logo
-    });
     
     try {
       const empresaId = Date.now().toString();
-      console.log('🔵 5 - ID gerado:', empresaId);
     
-       console.log('🔍 Antes SELECT');
       // Verificar se o código já existe
-      const codigoExistente = await db.getAllAsync(
-        'SELECT id FROM empresas WHERE codigo_referencia = ?',
-        [codigoReferencia.trim()]
-      );
+  const codigoExistente =
+    await EmpresaRepository.existeCodigo(
+      codigoReferenciaFinal
+    );
 
-      console.log('🔍 Depois SELECT');
-      console.log('📋 Resultado SELECT:', codigoExistente);
-
-      if (codigoExistente.length > 0) {
-        Alert.alert('Erro', 'Este código de referência já está cadastrado');
-        return;
-      }
-
- console.log('🔍 Antes PRAGMA');     
-try {
-  const tableInfo = await db.getAllAsync('PRAGMA table_info(empresas)');
-  console.log('📋 Estrutura da tabela empresas:', JSON.stringify(tableInfo, null, 2));
-} catch (error) {
-  console.log('Erro ao obter estrutura:', error);
-}
-console.log('🔍 Depois PRAGMA');
-
-console.log('🔎 empresaId:', empresaId);
-console.log('🔎 codigoReferencia:', codigoReferencia);
-console.log('🔎 nomeFantasia:', nomeFantasia);
-console.log('🔎 proprietario:', proprietario);
-console.log('🔎 cidade:', cidade);
-console.log('🔎 estado:', estado);
-console.log('🔎 enderecoFinal:', enderecoFinal);
-console.log('🔎 numeroFinal:', numeroFinal);
-console.log('🔎 email:', email);
-console.log('🔎 celular:', celular);
-console.log('🔎 anotacoes:', anotacoes);
-console.log('🔎 logo:', logo);
+  if (codigoExistente) {
+    Alert.alert(
+      'Erro',
+      'Este código de referência já está cadastrado'
+    );
+    return;
+  }
 
 const valoresInsert = [
   empresaId,
@@ -375,7 +334,7 @@ const valoresInsert = [
   cidadeFinal,
   formatarUF(estado),
   enderecoFinal,
-  numeroFinal.trim(),
+  numeroFinal,
   emailFinal,
   celular,
   anotacoesFinal,
@@ -384,31 +343,10 @@ const valoresInsert = [
   new Date().toISOString()
 ];
 
-console.log('📦 Valores do INSERT:', JSON.stringify(valoresInsert, null, 2));
+    await EmpresaRepository.inserirEmpresa(
+      valoresInsert
+    );
 
-
-await db.runAsync(
-  `INSERT INTO empresas (
-    id, 
-    codigo_referencia, 
-    nome_fantasia, 
-    proprietario, 
-    cidade, 
-    estado, 
-    endereco, 
-    numero, 
-    email, 
-    contato, 
-    anotacoes, 
-    logo, 
-    ativo, 
-    created_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-   valoresInsert
-);
-
-
-      
       Alert.alert(
         'Sucesso',
         'Empresa cadastrada com sucesso!',
