@@ -34,6 +34,9 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
+
+import { EmpresaConsultorRepository } from '../database/empresaConsultorRepository';
+
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
@@ -161,7 +164,7 @@ export default function EmpresaConsultorScreen() {
     }
     
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -202,7 +205,7 @@ export default function EmpresaConsultorScreen() {
     navigation.goBack();
   };
 
-  const handleSalvar = () => {
+  const handleSalvar =  async () => {
     const nomeError = nome.trim() === '' ? 'Nome da empresa é obrigatório' : '';
     const enderecoError = endereco.trim() === '' ? 'Endereço é obrigatório' : '';
     const numeroError = numero.trim() === '' ? 'Número é obrigatório' : '';
@@ -227,8 +230,33 @@ export default function EmpresaConsultorScreen() {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios corretamente');
       return;
     }
+
+    try {
+
+  const valoresEmpresa = [
+    logoPequena,
+    logoMedia,
+    nome,
+    endereco,
+    numero,
+    cidade,
+    estado,
+    celular,
+    telefone,
+    email,
+    mensagemFormulario,
+    new Date().toISOString()
+  ];
+
+  await EmpresaConsultorRepository.salvar(
+    valoresEmpresa
+  );
+
+  console.log(
+    '✅ Empresa consultor salva no banco'
+  );  
     
-    atualizarEmpresa({
+    atualizarEmpresa ({
       logoPequena,
       logoMedia,
       nome,
@@ -243,7 +271,21 @@ export default function EmpresaConsultorScreen() {
     });
     
     Alert.alert('Sucesso', 'Dados da empresa salvos com sucesso!');
-  };
+  
+
+} catch (error) {
+
+  console.error(
+    '❌ Erro ao salvar empresa:',
+    error
+  );
+
+  Alert.alert(
+    'Erro',
+    'Não foi possível salvar a empresa.'
+    );
+  }
+}
 
   return (
     <SafeAreaView style={styles.container}>
@@ -466,6 +508,7 @@ export default function EmpresaConsultorScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

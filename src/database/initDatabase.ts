@@ -127,6 +127,28 @@ await db.execAsync(`
   );
 `);
 
+// ==========================
+// TABELA EMPRESA CONSULTOR
+// ==========================
+await db.execAsync(`
+  CREATE TABLE IF NOT EXISTS empresa_consultor (
+    id TEXT PRIMARY KEY,
+    logo_pequena TEXT,
+    logo_media TEXT,
+    nome TEXT,
+    endereco TEXT,
+    numero TEXT,
+    cidade TEXT,
+    estado TEXT,
+    celular TEXT,
+    telefone TEXT,
+    email TEXT,
+    mensagem_formulario TEXT,
+    created_at TEXT,
+    updated_at TEXT
+  );
+`);
+
     // Configuração padrão
     const configExist = await db.getAllAsync(
       'SELECT * FROM configuracoes WHERE chave = ?',
@@ -178,6 +200,74 @@ await db.execAsync(`
 
       console.log('✅ Registro inicial do consultor criado');
     }
+
+  const empresaConsultorExistente =
+  await db.getFirstAsync(
+    'SELECT id FROM empresa_consultor LIMIT 1'
+  );
+
+if (!empresaConsultorExistente) {
+
+  await db.runAsync(
+    `INSERT INTO empresa_consultor (
+      id,
+      logo_pequena,
+      logo_media,
+      nome,
+      endereco,
+      numero,
+      cidade,
+      estado,
+      celular,
+      telefone,
+      email,
+      mensagem_formulario,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '1',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      new Date().toISOString()
+    ]
+  );
+
+  console.log(
+    '✅ Registro inicial empresa_consultor criado'
+  );
+}
+
+const empresaConsultorDados =
+  await db.getAllAsync(
+    'SELECT * FROM empresa_consultor'
+  );
+
+console.log(
+  '🏢 TODOS EMPRESA_CONSULTOR:',
+  JSON.stringify(
+    empresaConsultorDados,
+    null,
+    2
+  )
+);
+
+const tabelas = await db.getAllAsync(
+  "SELECT name FROM sqlite_master WHERE type='table'"
+);
+
+console.log(
+  '📋 TABELAS DO BANCO:',
+  tabelas
+);
 
     console.log('✅ Banco inicializado com sucesso');
 
