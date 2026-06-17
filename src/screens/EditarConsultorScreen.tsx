@@ -24,7 +24,6 @@ import {
   Alert,
   ScrollView,
   Image,
-  SafeAreaView,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
@@ -32,6 +31,7 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';

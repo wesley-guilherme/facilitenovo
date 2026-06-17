@@ -18,7 +18,6 @@ import {
   FlatList,
   TextInput,
   Alert,
-  SafeAreaView,
   StatusBar,
   Image,
   Dimensions,
@@ -28,6 +27,7 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';

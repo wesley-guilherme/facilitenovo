@@ -29,7 +29,6 @@ import {
   ScrollView,
   Image,
   Switch,
-  SafeAreaView,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
@@ -37,6 +36,7 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmpresaRepository } from '../database/empresaRepository';
 

@@ -34,11 +34,22 @@ export async function excluirImagem(
 ) {
   try {
 
+        console.log(
+      '🗑️ Tentando excluir:',
+      caminho
+    );
+
     const arquivo = new File(caminho);
 
     if (arquivo.exists) {
       arquivo.delete();
+
+          console.log(
+        '✅ Arquivo excluído'
+      );  
+
     }
+
 
   } catch (error) {
     console.error(

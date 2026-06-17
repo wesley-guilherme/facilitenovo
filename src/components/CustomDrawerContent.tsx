@@ -12,9 +12,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrawerContentScrollView, DrawerNavigationProp } from '@react-navigation/drawer';
 import { useConsultor } from '../contexts/ConsultorContext';
 import { useEmpresa } from '../contexts/EmpresaContext';

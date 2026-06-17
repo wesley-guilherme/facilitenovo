@@ -26,7 +26,6 @@ import {
   Alert,
   ScrollView,
   Image,
-  SafeAreaView,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
@@ -34,8 +33,11 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmpresaConsultorRepository } from '../database/empresaConsultorRepository';
+
+import { salvarLogo, excluirImagem } from '../services/imageService';
 
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -155,51 +157,139 @@ export default function EmpresaConsultorScreen() {
     return '';
   };
 
-  const handleSelecionarImagem = async (tipo: 'pequena' | 'media') => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à galeria para adicionar imagem');
-      return;
-    }
-    
-    const result = await ImagePicker.launchImageLibraryAsync({
+const handleSelecionarImagem = async (
+  tipo: 'pequena' | 'media'
+) => {
+
+  const { status } =
+    await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (status !== 'granted') {
+    Alert.alert(
+      'Permissão negada',
+      'Precisamos de acesso à galeria para adicionar imagem'
+    );
+    return;
+  }
+
+  const result =
+    await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-    
-    if (!result.canceled) {
-      if (tipo === 'pequena') {
-        setLogoPequena(result.assets[0].uri);
-      } else {
-        setLogoMedia(result.assets[0].uri);
-      }
-    }
-  };
 
-  // CORREÇÃO: Função para excluir a imagem (sem o X sobreposto)
-  const handleExcluirImagem = (tipo: 'pequena' | 'media') => {
-    Alert.alert(
-      'Excluir Imagem',
-      `Tem certeza que deseja remover a ${tipo === 'pequena' ? 'logo pequena' : 'marca d\'água'}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Excluir', 
-          style: 'destructive',
-          onPress: () => {
+  if (!result.canceled) {
+
+    try {
+
+      const caminhoFinal =
+        await salvarLogo(
+          result.assets[0].uri
+        );
+
+      console.log(
+        '🏢 Logo salva em:',
+        caminhoFinal
+      );
+
+      if (tipo === 'pequena') {
+
+        if (logoPequena) {
+          await excluirImagem(
+            logoPequena
+          );
+        }
+
+        setLogoPequena(
+          caminhoFinal
+        );
+
+      } else {
+
+        if (logoMedia) {
+          await excluirImagem(
+            logoMedia
+          );
+        }
+
+        setLogoMedia(
+          caminhoFinal
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        'Erro ao salvar imagem:',
+        error
+      );
+
+      Alert.alert(
+        'Erro',
+        'Não foi possível salvar a imagem.'
+      );
+    }
+  }
+};
+
+const handleExcluirImagem = (
+  tipo: 'pequena' | 'media'
+) => {
+
+  Alert.alert(
+    'Excluir Imagem',
+    `Tem certeza que deseja remover a ${
+      tipo === 'pequena'
+        ? 'logo pequena'
+        : "marca d'água"
+    }?`,
+    [
+      {
+        text: 'Cancelar',
+        style: 'cancel'
+      },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+
+          try {
+
             if (tipo === 'pequena') {
+
+              if (logoPequena) {
+                await excluirImagem(
+                  logoPequena
+                );
+              }
+
               setLogoPequena(null);
+
             } else {
+
+              if (logoMedia) {
+                await excluirImagem(
+                  logoMedia
+                );
+              }
+
               setLogoMedia(null);
             }
+
+          } catch (error) {
+
+            console.error(
+              'Erro ao excluir imagem:',
+              error
+            );
           }
         }
-      ]
-    );
-  };
+      }
+    ]
+  );
+};
 
   const handleVoltar = () => {
     navigation.goBack();
