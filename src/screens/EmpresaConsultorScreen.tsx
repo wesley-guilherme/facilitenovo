@@ -270,9 +270,17 @@ export default function EmpresaConsultorScreen() {
       mensagemFormulario,
     });
     
-    Alert.alert('Sucesso', 'Dados da empresa salvos com sucesso!');
-  
+    Alert.alert('Sucesso',
+       'Dados da empresa salvos com sucesso!',
+      [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('Home')
 
+        }
+      ]
+      );
+  
 } catch (error) {
 
   console.error(

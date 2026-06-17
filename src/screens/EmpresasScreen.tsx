@@ -31,7 +31,6 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-import * as SQLite from 'expo-sqlite';
 import { db } from '../database/initDatabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
