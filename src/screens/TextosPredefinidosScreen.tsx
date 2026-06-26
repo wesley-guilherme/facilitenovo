@@ -28,46 +28,62 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as SQLite from 'expo-sqlite';
+import { TextosPredefinidosRepository } from '../database/textosPredefinidosRepository';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
 type TextosPredefinidosScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'TextosPredefinidos'>;
 
-type TextoPredefinido = {
+type Texto = {
   id: string;
   texto: string;
+  created_at: string;
+  updated_at?: string | null;
 };
 
 export default function TextosPredefinidosScreen() {
   const navigation = useNavigation<TextosPredefinidosScreenNavigationProp>();
   const db = SQLite.openDatabaseSync('facilite.db');
   
-  const [textos, setTextos] = useState<TextoPredefinido[]>([]);
+  const [textos, setTextos] = useState<Texto[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingTexto, setEditingTexto] = useState<TextoPredefinido | null>(null);
+  const [editingTexto, setEditingTexto] = useState<Texto | null>(null);
   const [formTexto, setFormTexto] = useState('');
 
   // Carregar textos do banco de dados (com tratamento de erro)
   const carregarTextos = async () => {
+
     setLoading(true);
+
     try {
-      let textosDb: TextoPredefinido[] = [];
-      try {
-        const result = await db.getAllAsync('SELECT * FROM textos_predefinidos ORDER BY texto ASC');
-        textosDb = result as TextoPredefinido[];
-      } catch (tableError) {
-        console.log('Tabela textos_predefinidos não encontrada');
-        textosDb = [];
-      }
+
+      const textosDb =
+        await TextosPredefinidosRepository.listar();
+
+      console.log(
+        '📝 Textos carregados:',
+        textosDb
+      );
+
       setTextos(textosDb);
+
     } catch (error) {
-      console.error('Erro ao carregar textos:', error);
+
+      console.error(
+        'Erro ao carregar textos:',
+        error
+      );
+
       setTextos([]);
+
     } finally {
+
       setLoading(false);
+
     }
+
   };
 
   // Recarregar quando a tela ganhar foco
@@ -87,7 +103,7 @@ export default function TextosPredefinidosScreen() {
     setModalVisible(true);
   };
 
-  const openEditModal = (item: TextoPredefinido) => {
+  const openEditModal = (item: Texto) => {
     setEditingTexto(item);
     setFormTexto(item.texto);
     setModalVisible(true);
@@ -99,34 +115,59 @@ export default function TextosPredefinidosScreen() {
       return;
     }
 
-    try {
-      if (editingTexto) {
-        // Editar texto existente
-        await db.runAsync(
-          'UPDATE textos_predefinidos SET texto = ?, updatedAt = ? WHERE id = ?',
-          [formTexto, new Date().toISOString(), editingTexto.id]
-        );
-        Alert.alert('Sucesso', 'Texto atualizado com sucesso!');
-      } else {
-        // Adicionar novo texto
-        const novoId = Date.now().toString();
-        await db.runAsync(
-          'INSERT INTO textos_predefinidos (id, texto, createdAt) VALUES (?, ?, ?)',
-          [novoId, formTexto, new Date().toISOString()]
-        );
-        Alert.alert('Sucesso', 'Texto adicionado com sucesso!');
-      }
-      setModalVisible(false);
-      setFormTexto('');
-      setEditingTexto(null);
-      carregarTextos(); // Recarregar lista
-    } catch (error) {
-      console.error('Erro ao salvar texto:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o texto');
-    }
-  };
+try {
 
-  const handleExcluir = (item: TextoPredefinido) => {
+  if (editingTexto) {
+
+    await TextosPredefinidosRepository.atualizar([
+      formTexto,
+      new Date().toISOString(),
+      editingTexto.id
+    ]);
+
+    Alert.alert(
+      'Sucesso',
+      'Texto atualizado com sucesso!'
+    );
+
+  } else {
+
+    const novoId = Date.now().toString();
+
+    await TextosPredefinidosRepository.inserir([
+      novoId,
+      formTexto,
+      new Date().toISOString()
+    ]);
+
+    Alert.alert(
+      'Sucesso',
+      'Texto adicionado com sucesso!'
+    );
+
+  }
+
+  setModalVisible(false);
+  setFormTexto('');
+  setEditingTexto(null);
+
+  carregarTextos();
+
+} catch (error) {
+
+  console.error(
+    'Erro ao salvar texto:',
+    error
+  );
+
+  Alert.alert(
+    'Erro',
+    'Não foi possível salvar o texto.'
+    );
+  }
+}
+
+  const handleExcluir = (item: Texto) => {
     Alert.alert(
       'Excluir Texto',
       `Tem certeza que deseja excluir este texto?`,
@@ -150,7 +191,7 @@ export default function TextosPredefinidosScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: TextoPredefinido }) => (
+  const renderItem = ({ item }: { item: Texto }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => openEditModal(item)}

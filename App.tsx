@@ -14,7 +14,7 @@ import EmpresasScreen from './src/screens/EmpresasScreen';
 import CadastroEmpresaScreen from './src/screens/CadastroEmpresaScreen';
 import EditarEmpresaScreen from './src/screens/EditarEmpresaScreen';
 import VisitasScreen from './src/screens/VisitasScreen';
-import NovaVisitaScreen from './src/screens/NovaVisitaScreen';
+import FormularioVisitaScreen from './src/screens/FormularioVisitaScreen';
 import RelatoriosScreen from './src/screens/RelatoriosScreen';
 import TextosPredefinidosScreen from './src/screens/TextosPredefinidosScreen';
 import CustomDrawerContent from './src/components/CustomDrawerContent';
@@ -178,8 +178,8 @@ export default function App() {
               }}
             />
             <Drawer.Screen
-              name="NovaVisita"
-              component={NovaVisitaScreen}
+              name="FormularioVisita"
+              component={FormularioVisitaScreen}
               options={{
                 drawerLabel: 'Nova Visita',
                 headerShown: false,

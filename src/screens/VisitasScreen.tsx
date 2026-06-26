@@ -201,9 +201,9 @@ const carregarDados = async () => {
 
   const handleNovaVisita = (empresa?: EmpresaComUltimaVisita) => {
     if (empresa) {
-      navigation.navigate('NovaVisita', { empresa } as any);
+      navigation.navigate('FormularioVisita', { empresa } as any);
     } else {
-      navigation.navigate('NovaVisita' as any);
+      navigation.navigate('FormularioVisita' as any);
     }
   };
 

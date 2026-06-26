@@ -44,7 +44,7 @@ const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const HEADER_HEIGHT = 60;
 
-type NovaVisitaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'NovaVisita'>;
+type FormularioVisitaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'FormularioVisita'>;
 
 // Tipo para Empresa
 type EmpresaType = {
@@ -66,8 +66,8 @@ type TextoPredefinido = {
   texto: string;
 };
 
-export default function NovaVisitaScreen() {
-  const navigation = useNavigation<NovaVisitaScreenNavigationProp>();
+export default function FormularioVisitaScreen() {
+  const navigation = useNavigation<FormularioVisitaScreenNavigationProp>();
   const route = useRoute();
   const { consultor } = useConsultor();
   const { empresa: empresaConsultor } = useEmpresa();

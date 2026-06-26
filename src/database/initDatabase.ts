@@ -78,6 +78,7 @@ export const initDatabase = async () => {
         hora_inicio TEXT NOT NULL,
         hora_termino TEXT NOT NULL,
         descricao TEXT NOT NULL,
+        status TEXT DEFAULT 'RASCUNHO',
         assinatura TEXT,
         created_at TEXT,
         updated_at TEXT,
@@ -86,6 +87,55 @@ export const initDatabase = async () => {
           ON DELETE CASCADE
       );
     `);
+  try {
+
+  const tableInfo =
+    await db.getAllAsync(
+      'PRAGMA table_info(visitas)'
+    );
+
+  const possuiStatus =
+    (tableInfo as any[]).some(
+      coluna => coluna.name === 'status'
+    );
+
+  if (!possuiStatus) {
+
+    await db.execAsync(`
+      ALTER TABLE visitas
+      ADD COLUMN status TEXT DEFAULT 'RASCUNHO'
+    `);
+
+    console.log(
+      '✅ Coluna status adicionada em visitas'
+    );
+
+  }
+
+} catch (error) {
+
+  console.log(
+    'Tabela visitas ainda não existe'
+  );
+
+}
+
+    // ==========================
+   // TABELA ASSINATURAS
+  // ==========================
+await db.execAsync(`
+  CREATE TABLE IF NOT EXISTS assinaturas (
+    id TEXT PRIMARY KEY,
+    empresa_id TEXT NOT NULL UNIQUE,
+    nome_assinante TEXT NOT NULL,
+    assinatura TEXT NOT NULL,
+    created_at TEXT,
+    updated_at TEXT,
+    FOREIGN KEY (empresa_id)
+      REFERENCES empresas(id)
+      ON DELETE CASCADE
+  );
+`);
 
     // ==========================
     // TABELA CONFIGURAÇÕES
@@ -148,6 +198,16 @@ await db.execAsync(`
     updated_at TEXT
   );
 `);
+
+const textoExistente =
+  await db.getFirstAsync(
+    'SELECT id FROM textos_predefinidos LIMIT 1'
+  );
+
+console.log(
+  '📝 Primeiro texto:',
+  textoExistente
+);
 
     // Configuração padrão
     const configExist = await db.getAllAsync(
