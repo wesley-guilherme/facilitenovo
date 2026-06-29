@@ -34,7 +34,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import * as SQLite from 'expo-sqlite';
+import { db } from '../database/initDatabase';
 
 const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -76,9 +76,7 @@ type EmpresaComUltimaVisita = Empresa & {
 };
 
 export default function VisitasScreen() {
-  const navigation = useNavigation<VisitasScreenNavigationProp>();
-  const db = SQLite.openDatabaseSync('facilite.db');
-  
+  const navigation = useNavigation<VisitasScreenNavigationProp>(); 
   const [empresas, setEmpresas] = useState<EmpresaComUltimaVisita[]>([]);
   const [pesquisa, setPesquisa] = useState('');
   const [loading, setLoading] = useState(true);

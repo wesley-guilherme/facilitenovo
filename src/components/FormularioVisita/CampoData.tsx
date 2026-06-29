@@ -3,36 +3,38 @@ import React from 'react';
 import {
   View,
   Text,
-  TextInput,
+  TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 
 type Props = {
   value: string;
-  onChange: (texto: string) => void;
+  onPress: () => void;
 };
 
-export default function CampoSolicitante({
+export default function CampoData({
   value,
-  onChange,
+  onPress,
 }: Props) {
 
   return (
-    <View style={styles.container}>
+    <View style={styles.field}>
 
       <Text style={styles.label}>
-        Solicitante *
+        Data da Visita
+        <Text style={styles.required}>
+          {' '}*
+        </Text>
       </Text>
 
-      <TextInput
+      <TouchableOpacity
+        onPress={onPress}
         style={styles.input}
-        placeholder="Nome do solicitante"
-        placeholderTextColor="#999"
-        value={value}
-        onChangeText={onChange}
-        autoCapitalize="words"
-        returnKeyType="next"
-      />
+      >
+        <Text>
+          📅 {value}
+        </Text>
+      </TouchableOpacity>
 
     </View>
   );
@@ -40,7 +42,7 @@ export default function CampoSolicitante({
 
 const styles = StyleSheet.create({
 
-  container: {
+  field: {
     marginBottom: 16,
   },
 
@@ -51,16 +53,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  required: {
+    color: '#DC3545',
+  },
+
   input: {
     backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#DEE2E6',
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 16,
+  },
+
+  inputText: {
     fontSize: 16,
     color: '#212529',
   },
 
 });
-

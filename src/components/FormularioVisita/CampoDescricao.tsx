@@ -1,0 +1,131 @@
+import React, { useState } from 'react';
+
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+
+import TextoPredefinidoModal
+from './TextoPredefinidoModal';
+
+type Props = {
+  value: string;
+  onChange: (
+    texto: string
+  ) => void;
+};
+
+export default function CampoDescricao({
+  value,
+  onChange,
+}: Props) {
+
+  const [modalVisible,
+    setModalVisible] =
+      useState(false);
+
+  function inserirTexto(
+    texto: string
+  ) {
+
+    if (!value.trim()) {
+
+      onChange(texto);
+
+      return;
+    }
+
+    onChange(
+      `${value}\n\n${texto}`
+    );
+
+  }
+
+  return (
+
+    <View>
+
+      <Text style={styles.label}>
+        Descrição do Atendimento
+        <Text style={styles.required}>
+          *
+        </Text>
+      </Text>
+
+      <TouchableOpacity
+        style={styles.botao}
+        onPress={() =>
+          setModalVisible(true)
+        }
+      >
+
+        <Text style={styles.botaoTexto}>
+          📋 Inserir Texto Predefinido
+        </Text>
+
+      </TouchableOpacity>
+
+      <TextInput
+        multiline
+        numberOfLines={8}
+        value={value}
+        onChangeText={onChange}
+        placeholder="Descreva os serviços executados..."
+        style={styles.input}
+      />
+
+      <TextoPredefinidoModal
+        visible={modalVisible}
+        onClose={() =>
+          setModalVisible(false)
+        }
+        onSelecionar={
+          inserirTexto
+        }
+      />
+
+    </View>
+
+  );
+
+}
+
+const styles =
+  StyleSheet.create({
+
+    label: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 10,
+    },
+
+    required: {
+      color: '#E53935',
+    },
+
+    botao: {
+      borderWidth: 1,
+      borderColor: '#DDD',
+      borderRadius: 10,
+      padding: 15,
+      marginBottom: 15,
+    },
+
+    botaoTexto: {
+      color: '#1976D2',
+      fontSize: 16,
+    },
+
+    input: {
+      borderWidth: 1,
+      borderColor: '#DDD',
+      borderRadius: 10,
+      padding: 15,
+      minHeight: 180,
+      textAlignVertical: 'top',
+    },
+
+});

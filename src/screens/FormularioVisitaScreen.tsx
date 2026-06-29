@@ -10,7 +10,7 @@
  * - Validações e regras de negócio
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -30,12 +30,19 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useConsultor } from '../contexts/ConsultorContext';
 import { useEmpresa } from '../contexts/EmpresaContext';
+import CampoEmpresa from '../components/FormularioVisita/CampoEmpresa';
+import CampoSolicitante from '../components/FormularioVisita/CampoSolicitante';
+import CampoData from '../components/FormularioVisita/CampoData';
+import CampoHorario from '../components/FormularioVisita/CampoHorario';
+import CampoDescricao from '../components/FormularioVisita/CampoDescricao';
+import type { EmpresaDB } from '../database/empresaRepository';
 import { db } from '../database/initDatabase'
+import DateTimePicker, { DateTimePickerEvent, DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import SignatureScreen from 'react-native-signature-canvas';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -47,18 +54,6 @@ const HEADER_HEIGHT = 60;
 type FormularioVisitaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'FormularioVisita'>;
 
 // Tipo para Empresa
-type EmpresaType = {
-  id: string;
-  codigoReferencia: string;
-  nomeFantasia: string;
-  logo: string | null;
-  contato: string;
-  endereco: string;
-  numero: string;
-  cidade: string;
-  estado: string;
-  ativo: boolean;
-};
 
 // Tipo para Texto Predefinido
 type TextoPredefinido = {
@@ -78,18 +73,20 @@ export default function FormularioVisitaScreen() {
   
   // Estados do formulário
   const [empresaId, setEmpresaId] = useState('');
-  const [empresaSelecionada, setEmpresaSelecionada] = useState<EmpresaType | null>(null);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState<EmpresaDB | null>(null);
   const [solicitante, setSolicitante] = useState('');
-  const [dataVisita, setDataVisita] = useState(new Date().toISOString().split('T')[0]);
+  const [dataVisita, setDataVisita] = useState(new Date().toLocaleDateString('pt-BR'));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dataSelecionada, setDataSelecionada] = useState(new Date());
+  const [showHoraPicker, setShowHoraPicker] = useState(false);
+  const [tipoHora, setTipoHora] = useState <'inicio' | 'termino'>('inicio');
+  const [horaSelecionada, setHoraSelecionada] = useState(new Date());
   const [horaInicio, setHoraInicio] = useState('');
   const [horaTermino, setHoraTermino] = useState('');
   const [descricao, setDescricao] = useState('');
   const [assinatura, setAssinatura] = useState<string | null>(null);
   const [textosPredefinidos, setTextosPredefinidos] = useState<TextoPredefinido[]>([]);
   const [showTextosModal, setShowTextosModal] = useState(false);
-  const [buscaEmpresa, setBuscaEmpresa] = useState('');
-  const [empresasEncontradas, setEmpresasEncontradas] = useState<EmpresaType[]>([]);
-  const [showEmpresaModal, setShowEmpresaModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ultimaVisita, setUltimaVisita] = useState<any>(null);
   
@@ -109,60 +106,179 @@ export default function FormularioVisitaScreen() {
     }
   };
 
-  // Buscar empresas
-  const buscarEmpresas = async () => {
-    if (buscaEmpresa.trim().length < 2) {
-      Alert.alert('Aviso', 'Digite pelo menos 2 caracteres para buscar');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const empresas = await db.getAllAsync(
-        `SELECT * FROM empresas WHERE ativo = 1 AND (codigoReferencia LIKE '%${buscaEmpresa}%' OR nomeFantasia LIKE '%${buscaEmpresa}%')`
-      );
-      setEmpresasEncontradas(empresas as EmpresaType[]);
-      setShowEmpresaModal(true);
-    } catch (error) {
-      console.error('Erro ao buscar empresas:', error);
-      Alert.alert('Erro', 'Não foi possível buscar as empresas');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selecionarEmpresa = (empresa: EmpresaType) => {
+  const selecionarEmpresa = (empresa: EmpresaDB) => {
     setEmpresaSelecionada(empresa);
     setEmpresaId(empresa.id);
-    setShowEmpresaModal(false);
     carregarUltimaVisita(empresa.id);
   };
 
-// Carregar última visita da empresa (se existir)
-const carregarUltimaVisita = async (empresaId: string) => {
-  try {
-    const visitas = await db.getAllAsync(
-      `SELECT * FROM visitas WHERE empresaId = ? ORDER BY dataVisita DESC LIMIT 1`,
-      [empresaId]
-    );
-    if (visitas.length > 0) {
-      const ultima = visitas[0] as any;
-      setUltimaVisita(ultima);
-      // Preencher com dados da última visita
-      setSolicitante(ultima.solicitante || '');
-      setDescricao(ultima.descricao || '');
-      setAssinatura(ultima.assinatura || null);
-    } else {
-      setUltimaVisita(null);
-      // Limpar campos se não houver visita anterior
-      setSolicitante('');
-      setDescricao('');
-      setAssinatura(null);
-    }
-  } catch (error) {
-    console.error('Erro ao carregar última visita:', error);
+  //Selecionar Data
+  const selecionarData = () => {
+
+    if (Platform.OS === 'android') {
+
+      DateTimePickerAndroid.open({
+        value: dataSelecionada,
+        mode: 'date',
+        maximumDate: new Date(),
+        onChange: onChangeData,
+      });
+
+  } else {
+
+    setShowDatePicker(true);
+
   }
+
 };
+
+  const onChangeData = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+
+    if (Platform.OS === 'ios') {
+      setShowDatePicker(false);
+    }
+
+    if (!selectedDate)
+      return;
+
+    setDataSelecionada(selectedDate);
+
+    setDataVisita(
+      selectedDate.toLocaleDateString(
+        'pt-BR'
+      )
+    );
+
+  };
+
+  //Selecionar Hora
+  const selecionarHora = (
+  tipo: 'inicio' | 'termino'
+) => {
+
+  setTipoHora(tipo);
+
+  if (
+    Platform.OS === 'android'
+  ) {
+
+    DateTimePickerAndroid.open({
+
+      value: horaSelecionada,
+
+      mode: 'time',
+
+      is24Hour: true,
+
+      onChange:
+        onChangeHora,
+
+    });
+
+  } else {
+
+    setShowHoraPicker(
+      true
+    );
+
+  }
+
+};
+
+  const onChangeHora = (
+  event: DateTimePickerEvent,
+  selectedDate?: Date
+) => {
+
+  if (
+    Platform.OS === 'ios'
+  ) {
+
+    setShowHoraPicker(
+      false
+    );
+
+  }
+
+  if (!selectedDate)
+    return;
+
+  setHoraSelecionada(
+    selectedDate
+  );
+
+  const hora =
+    selectedDate
+      .toLocaleTimeString(
+        'pt-BR',
+        {
+          hour: '2-digit',
+          minute: '2-digit',
+        }
+      );
+
+  if (
+    tipoHora ===
+    'inicio'
+  ) {
+
+    setHoraInicio(
+      hora
+    );
+
+  } else {
+
+    setHoraTermino(
+      hora
+    );
+
+  }
+
+};
+
+
+
+// Carregar última visita da empresa (se existir)
+const carregarUltimaVisita = async (
+  empresaId?: string
+) => {
+
+  if (
+    !empresaId ||
+    empresaId === '' ||
+    empresaId === 'undefined' ||
+    empresaId === 'null'
+  ) 
+
+try {
+
+const visitas =
+  await db.getAllAsync(
+    `
+    SELECT *
+    FROM visitas
+    WHERE empresa_id = ?
+    ORDER BY data_visita DESC
+    LIMIT 1
+    `,
+    [String(empresaId)]
+  );
+
+
+} catch(error) {
+
+  console.error(
+    'Empresa Não Carregada',
+    error
+  );
+
+}
+
+};
+
 
   // Inserir texto predefinido
   const inserirTextoPredefinido = (texto: string) => {
@@ -198,6 +314,36 @@ const carregarUltimaVisita = async (empresaId: string) => {
     }
     return true;
   };
+
+  // Limpar Formulário quando não salvar
+
+  useFocusEffect(
+  useCallback(() => {
+
+    limparFormulario();
+
+    return () => {};
+
+  }, [])
+);
+
+  function limparFormulario() {
+
+  setEmpresaSelecionada(null);
+
+  setEmpresaId('');
+
+  setSolicitante('');
+
+  setDescricao('');
+
+  setHoraInicio('');
+
+  setHoraTermino('');
+
+  setAssinatura(null);
+
+}
 
   // Salvar visita
   const handleSalvar = async () => {
@@ -248,7 +394,7 @@ const carregarUltimaVisita = async (empresaId: string) => {
 
   // Gerar nome do arquivo
   const gerarNomeArquivo = () => {
-    const nomeEmpresa = empresaSelecionada?.nomeFantasia?.replace(/[^a-zA-Z0-9]/g, '_') || 'empresa';
+    const nomeEmpresa = empresaSelecionada?.nome_fantasia?.replace(/[^a-zA-Z0-9]/g, '_') || 'empresa';
     const dataFormatada = dataVisita.replace(/-/g, '');
     const horaFormatada = horaTermino.replace(/:/g, '');
     return `${nomeEmpresa}_${dataFormatada}_${horaFormatada}`;
@@ -296,19 +442,23 @@ const carregarUltimaVisita = async (empresaId: string) => {
         <Text style={styles.infoLabel}>Consultor</Text>
         <Text style={styles.infoValue}>{consultor?.nome || 'Carregando...'}</Text>
       </View>
+  
 
       {/* Botão Buscar Empresa */}
-      <TouchableOpacity style={styles.buscarButton} onPress={buscarEmpresas}>
-        <Text style={styles.buscarButtonIcon}>🔍</Text>
-        <Text style={styles.buscarButtonText}>
-          {empresaSelecionada ? 'Alterar Empresa' : 'Buscar Empresa'}
-        </Text>
-      </TouchableOpacity>
+    <CampoEmpresa
+  value={empresaSelecionada}
+  onSelect={(empresa) => {
+    setEmpresaSelecionada(empresa);
+    setEmpresaId(empresa.id);
+
+    carregarUltimaVisita(empresa.id)
+  }}
+/>
 
       {empresaSelecionada && (
         <View style={styles.selectedEmpresaCard}>
-          <Text style={styles.selectedEmpresaCodigo}>🔢 {empresaSelecionada.codigoReferencia}</Text>
-          <Text style={styles.selectedEmpresaNome}>{empresaSelecionada.nomeFantasia}</Text>
+          <Text style={styles.selectedEmpresaCodigo}>🔢 {empresaSelecionada.codigo_referencia}</Text>
+          <Text style={styles.selectedEmpresaNome}>{empresaSelecionada.nome_fantasia}</Text>
           <Text style={styles.selectedEmpresaContato}>📱 {empresaSelecionada.contato}</Text>
           <Text style={styles.selectedEmpresaEndereco}>
             📍 {empresaSelecionada.endereco}, {empresaSelecionada.numero} - {empresaSelecionada.cidade}/{empresaSelecionada.estado}
@@ -317,106 +467,102 @@ const carregarUltimaVisita = async (empresaId: string) => {
       )}
 
       {/* Solicitante */}
-      <View style={styles.field}>
-        <Text style={styles.label}>Solicitante <Text style={styles.required}>*</Text></Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Nome do solicitante"
-          placeholderTextColor="#ADB5BD"
-          value={solicitante}
-          onChangeText={setSolicitante}
-        />
-      </View>
+      <CampoSolicitante
+        value={solicitante}
+  onChange={setSolicitante}
+      />
 
       {/* Data da Visita */}
-      <View style={styles.field}>
-        <Text style={styles.label}>Data da Visita <Text style={styles.required}>*</Text></Text>
-        <TouchableOpacity style={styles.dateButton} onPress={() => {}}>
-          <Text style={styles.dateText}>{new Date(dataVisita).toLocaleDateString('pt-BR')}</Text>
-        </TouchableOpacity>
-      </View>
+      <CampoData
+        value={dataVisita}
+        onPress={selecionarData}
+      />
 
       {/* Hora Início e Hora Término */}
-      <View style={styles.row}>
-        <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-          <Text style={styles.label}>Hora Início <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            placeholder="HH:MM"
-            placeholderTextColor="#ADB5BD"
-            value={horaInicio}
-            onChangeText={setHoraInicio}
-            keyboardType="numeric"
-          />
-        </View>
-        <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
-          <Text style={styles.label}>Hora Término <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            placeholder="HH:MM"
-            placeholderTextColor="#ADB5BD"
-            value={horaTermino}
-            onChangeText={setHoraTermino}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
+      <CampoHorario
+        horaInicio={horaInicio}
+        horaTermino={horaTermino}
+        onHoraInicio={() => 
+          selecionarHora(
+            'inicio'
+          )
+        }
+        onHoraTermino={() =>
+          selecionarHora(
+            'termino'
+          ) 
+        }
+      />
 
       {/* Descrição do Atendimento */}
-      <View style={styles.field}>
-        <Text style={styles.label}>Descrição do Atendimento <Text style={styles.required}>*</Text></Text>
-        <TouchableOpacity style={styles.textoPredefinidoButton} onPress={() => setShowTextosModal(true)}>
-          <Text style={styles.textoPredefinidoButtonText}>📋 Inserir Texto Predefinido</Text>
-        </TouchableOpacity>
-        <TextInput
-          style={styles.textArea}
-          placeholder="Descreva os serviços executados..."
-          placeholderTextColor="#ADB5BD"
-          multiline
-          numberOfLines={6}
-          textAlignVertical="top"
-          value={descricao}
-          onChangeText={setDescricao}
-        />
-      </View>
+      <CampoDescricao
+        value={descricao}
+        onChange={setDescricao}
+      />
     </ScrollView>
   );
 
   // Aba 2: Assinatura
-  const renderAssinaturaAba = () => (
-    <View style={styles.assinaturaContainer}>
-      <Text style={styles.assinaturaTitle}>Assinatura do Cliente</Text>
-      <Text style={styles.assinaturaSubtitle}>
-        Peça para o cliente assinar na linha abaixo
-      </Text>
-      
-      <View style={styles.signatureContainer}>
-        <SignatureScreen
-          ref={signatureRef}
-          onOK={handleSignature}
-          onEmpty={() => Alert.alert('Aviso', 'Por favor, assine no campo acima')}
-          descriptionText=""
-          clearText="Limpar"
-          confirmText="Confirmar"
-          webStyle={signatureWebStyle}
-          style={styles.signature}
+
+const renderAssinaturaAba = () => (
+  <View style={styles.assinaturaContainer}>
+    <Text style={styles.assinaturaTitle}>
+      Assinatura do Cliente
+    </Text>
+
+    <Text style={styles.assinaturaSubtitle}>
+      Peça para o cliente assinar na linha abaixo
+    </Text>
+
+    <View style={styles.signatureContainer}>
+
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: 'bold'
+          }}
+        >
+          TESTE ASSINATURA
+        </Text>
+      </View>
+
+    </View>
+
+    <View style={styles.assinaturaBotoes}>
+      <TouchableOpacity
+        style={styles.clearButton}
+        onPress={handleClearSignature}
+      >
+        <Text style={styles.clearButtonText}>
+          🗑️ Limpar Assinatura
+        </Text>
+      </TouchableOpacity>
+    </View>
+
+    {assinatura && (
+      <View style={styles.previewContainer}>
+        <Text style={styles.previewTitle}>
+          Prévia da Assinatura:
+        </Text>
+
+        <Image
+          source={{ uri: assinatura }}
+          style={styles.previewImage}
         />
       </View>
-      
-      <View style={styles.assinaturaBotoes}>
-        <TouchableOpacity style={styles.clearButton} onPress={handleClearSignature}>
-          <Text style={styles.clearButtonText}>🗑️ Limpar Assinatura</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {assinatura && (
-        <View style={styles.previewContainer}>
-          <Text style={styles.previewTitle}>Prévia da Assinatura:</Text>
-          <Image source={{ uri: assinatura }} style={styles.previewImage} />
-        </View>
-      )}
-    </View>
-  );
+    )}
+
+  </View>
+);
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -424,7 +570,7 @@ const carregarUltimaVisita = async (empresaId: string) => {
       
       {/* Cabeçalho */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('Visitas' as never)} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nova Visita</Text>
@@ -468,46 +614,6 @@ const carregarUltimaVisita = async (empresaId: string) => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* Modal de seleção de empresa */}
-      <Modal
-        visible={showEmpresaModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowEmpresaModal(false)}
-      >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowEmpresaModal(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Selecione a Empresa</Text>
-            <TextInput
-              style={styles.modalSearchInput}
-              placeholder="Digite o código ou nome..."
-              placeholderTextColor="#ADB5BD"
-              value={buscaEmpresa}
-              onChangeText={setBuscaEmpresa}
-            />
-            <TouchableOpacity style={styles.modalSearchButton} onPress={buscarEmpresas}>
-              <Text style={styles.modalSearchButtonText}>Buscar</Text>
-            </TouchableOpacity>
-            <ScrollView style={styles.modalList}>
-              {empresasEncontradas.map((empresa) => (
-                <TouchableOpacity
-                  key={empresa.id}
-                  style={styles.modalItem}
-                  onPress={() => selecionarEmpresa(empresa)}
-                >
-                  <Text style={styles.modalItemCodigo}>🔢 {empresa.codigoReferencia}</Text>
-                  <Text style={styles.modalItemNome}>{empresa.nomeFantasia}</Text>
-                  <Text style={styles.modalItemArrow}>→</Text>
-                </TouchableOpacity>
-              ))}
-              {empresasEncontradas.length === 0 && buscaEmpresa.length >= 2 && (
-                <Text style={styles.modalEmptyText}>Nenhuma empresa encontrada</Text>
-              )}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
       {/* Modal de textos predefinidos */}
       <Modal
         visible={showTextosModal}
@@ -532,6 +638,17 @@ const carregarUltimaVisita = async (empresaId: string) => {
               {textosPredefinidos.length === 0 && (
                 <Text style={styles.modalEmptyText}>Nenhum texto predefinido cadastrado</Text>
               )}
+                {showDatePicker && (
+
+  <DateTimePicker
+    value={dataSelecionada}
+    mode="date"
+    display="default"
+    onChange={onChangeData}
+    maximumDate={new Date()}
+  />
+
+)}
             </ScrollView>
           </View>
         </TouchableOpacity>

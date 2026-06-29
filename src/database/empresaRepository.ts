@@ -1,12 +1,35 @@
 import { db } from './initDatabase';
 
+export type EmpresaDB = {
+  id: string;
+  codigo_referencia: string;
+  nome_fantasia: string;
+  proprietario: string | null;
+  cidade: string;
+  estado: string;
+  endereco: string;
+  numero: string;
+  email: string;
+  contato: string;
+  anotacoes: string | null;
+  logo: string | null;
+  ativo: number;
+  rota: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export const EmpresaRepository = {
 
-  async listar() {
-    return await db.getAllAsync(
-      'SELECT * FROM empresas ORDER BY nome_fantasia ASC'
-    );
-  },
+  async listar(): Promise<EmpresaDB[]> {
+
+  return await db.getAllAsync<EmpresaDB>(
+    `SELECT *
+     FROM empresas
+     ORDER BY nome_fantasia ASC`
+  );
+
+},
 
   async buscarPorCodigo(codigo: string) {
     return await db.getFirstAsync(

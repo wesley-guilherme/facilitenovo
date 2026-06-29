@@ -31,7 +31,7 @@ import { RootDrawerParamList } from '../types/navigation';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
-import * as SQLite from 'expo-sqlite';
+import  { db } from '../database/initDatabase';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -45,9 +45,7 @@ const CONFIG_INICIAL = {
 };
 
 export default function ConfiguracoesScreen() {
-  const navigation = useNavigation<ConfiguracoesScreenNavigationProp>();
-  const db = SQLite.openDatabaseSync('facilite.db');
-  
+  const navigation = useNavigation<ConfiguracoesScreenNavigationProp>();  
   const [diasAviso, setDiasAviso] = useState(CONFIG_INICIAL.diasAviso);
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(CONFIG_INICIAL.notificacoesAtivas);
   const [loading, setLoading] = useState(false);

@@ -27,7 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-import * as SQLite from 'expo-sqlite';
+import { db } from '../database/initDatabase';
 import { TextosPredefinidosRepository } from '../database/textosPredefinidosRepository';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -44,8 +44,6 @@ type Texto = {
 
 export default function TextosPredefinidosScreen() {
   const navigation = useNavigation<TextosPredefinidosScreenNavigationProp>();
-  const db = SQLite.openDatabaseSync('facilite.db');
-  
   const [textos, setTextos] = useState<Texto[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
