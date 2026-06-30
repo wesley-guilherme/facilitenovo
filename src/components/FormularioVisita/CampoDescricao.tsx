@@ -99,7 +99,7 @@ const styles =
     label: {
       fontSize: 18,
       fontWeight: '600',
-      marginBottom: 10,
+      marginBottom: 16,
     },
 
     required: {

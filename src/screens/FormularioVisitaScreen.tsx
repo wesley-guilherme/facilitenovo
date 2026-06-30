@@ -79,10 +79,10 @@ export default function FormularioVisitaScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
   const [showHoraPicker, setShowHoraPicker] = useState(false);
-  const [tipoHora, setTipoHora] = useState <'inicio' | 'termino'>('inicio');
   const [horaSelecionada, setHoraSelecionada] = useState(new Date());
   const [horaInicio, setHoraInicio] = useState('');
   const [horaTermino, setHoraTermino] = useState('');
+  const [tipoHoraAtual, setTipoHoraAtual] = useState< 'inicio' | 'termino' >('inicio');
   const [descricao, setDescricao] = useState('');
   const [assinatura, setAssinatura] = useState<string | null>(null);
   const [textosPredefinidos, setTextosPredefinidos] = useState<TextoPredefinido[]>([]);
@@ -159,8 +159,6 @@ export default function FormularioVisitaScreen() {
   tipo: 'inicio' | 'termino'
 ) => {
 
-  setTipoHora(tipo);
-
   if (
     Platform.OS === 'android'
   ) {
@@ -173,12 +171,23 @@ export default function FormularioVisitaScreen() {
 
       is24Hour: true,
 
-      onChange:
-        onChangeHora,
+      onChange: (
+        event,
+        selectedDate
+      ) =>
+        onChangeHora(
+          tipo,
+          event,
+          selectedDate
+        ),
 
     });
 
   } else {
+
+    setTipoHoraAtual(
+      tipo
+    );
 
     setShowHoraPicker(
       true
@@ -189,6 +198,7 @@ export default function FormularioVisitaScreen() {
 };
 
   const onChangeHora = (
+  tipo: 'inicio' | 'termino',
   event: DateTimePickerEvent,
   selectedDate?: Date
 ) => {
@@ -203,12 +213,10 @@ export default function FormularioVisitaScreen() {
 
   }
 
-  if (!selectedDate)
+  if (
+    !selectedDate
+  )
     return;
-
-  setHoraSelecionada(
-    selectedDate
-  );
 
   const hora =
     selectedDate
@@ -221,21 +229,58 @@ export default function FormularioVisitaScreen() {
       );
 
   if (
-    tipoHora ===
-    'inicio'
+    tipo ===
+    'termino'
   ) {
 
-    setHoraInicio(
-      hora
-    );
+    if (
+      horaInicio
+    ) {
 
-  } else {
+      const inicio =
+        horaInicio
+          .split(':')
+          .map(Number);
+
+      const inicioDate =
+        new Date();
+
+      inicioDate
+        .setHours(
+          inicio[0],
+          inicio[1]
+        );
+
+      if (
+        selectedDate <
+        inicioDate
+      ) {
+
+        Alert.alert(
+          'Aviso',
+          'O horário final não pode ser menor que o horário inicial'
+        );
+
+        return;
+      }
+
+    }
 
     setHoraTermino(
       hora
     );
 
+  } else {
+
+    setHoraInicio(
+      hora
+    );
+
   }
+
+  setHoraSelecionada(
+    selectedDate
+  );
 
 };
 
@@ -453,7 +498,9 @@ const visitas =
 
     carregarUltimaVisita(empresa.id)
   }}
+  
 />
+<View style={{ marginBottom: 16}} />
 
       {empresaSelecionada && (
         <View style={styles.selectedEmpresaCard}>
@@ -647,8 +694,20 @@ const renderAssinaturaAba = () => (
     onChange={onChangeData}
     maximumDate={new Date()}
   />
-
 )}
+
+  <DateTimePicker
+  value={horaSelecionada}
+  mode="time"
+  is24Hour
+  onChange={(event, date) =>
+    onChangeHora(
+      tipoHoraAtual,
+      event,
+      date
+    )
+  }
+/>
             </ScrollView>
           </View>
         </TouchableOpacity>

@@ -232,8 +232,9 @@ const styles =
   StyleSheet.create({
 
     label: {
+      fontSize: 16,
       fontWeight: '600',
-      marginBottom: 8
+      marginBottom: 10,
     },
 
     input: {

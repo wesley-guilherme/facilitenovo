@@ -23,24 +23,30 @@ export default function CampoHorario({
 
   return (
 
-    <View style={styles.container}>
+  <View style={styles.container}>
 
-      <Text style={styles.label}>
-        Hora
-        <Text style={styles.required}>
-          *
-        </Text>
+    <Text style={styles.label}>
+      Horário
+      <Text style={styles.required}>
+        *
       </Text>
+    </Text>
+
+    <View style={styles.row}>
 
       <TouchableOpacity
         style={styles.input}
         onPress={onHoraInicio}
       >
 
+        <Text style={styles.titulo}>
+          Início
+        </Text>
+
         <Text style={styles.texto}>
           {horaInicio
             ? `🕒 ${horaInicio}`
-            : '🕒 Selecionar horário'}
+            : '--:--'}
         </Text>
 
       </TouchableOpacity>
@@ -50,24 +56,30 @@ export default function CampoHorario({
         onPress={onHoraTermino}
       >
 
+        <Text style={styles.titulo}>
+          Término
+        </Text>
+
         <Text style={styles.texto}>
           {horaTermino
             ? `🕒 ${horaTermino}`
-            : '🕒 Selecionar horário'}
+            : '--:--'}
         </Text>
 
       </TouchableOpacity>
 
     </View>
 
-  );
+  </View>
+
+);
 
 }
 
 const styles = StyleSheet.create({
 
   container: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
 
   label: {
@@ -82,17 +94,36 @@ const styles = StyleSheet.create({
   },
 
   input: {
+    flex: 1,
     backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#DEE2E6',
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    minHeight: 60,
+  },
+
+  titulo: {
+    fontSize: 10,
+    color: '#6C757D',
+    marginBottom: 2,
   },
 
   texto: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 400,
     color: '#212529',
   },
+
+  row: {
+
+  flexDirection: 'row',
+  justifyContent:'space-between',
+  gap: 8,
+    
+},
 
 });
