@@ -44,8 +44,8 @@ type VisitasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Vi
 // Tipo para Empresa
 type Empresa = {
   id: string;
-  codigoReferencia: string;
-  nomeFantasia: string;
+  codigo_referencia: string;
+  nome_fantasia: string;
   logo: string | null;
   cidade: string;
   endereco: string;
@@ -59,13 +59,13 @@ type Empresa = {
 // Tipo para Visita
 type Visita = {
   id: string;
-  empresaId: string;
-  dataVisita: string;
-  horaInicio: string;
-  horaTermino: string;
+  empresa_id: string;
+  data_visita: string;
+  hora_inicio: string;
+  hora_termino: string;
   descricao: string;
   assinatura: string | null;
-  createdAt: string;
+  created_at: string;
 };
 
 // Tipo para Empresa com dados agregados da última visita
@@ -95,7 +95,7 @@ export default function VisitasScreen() {
 
   const carregarConfiguracoes = async () => {
     try {
-      const result = await db.getAllAsync('SELECT valor FROM configuracoes WHERE chave = "diasAviso"');
+      const result = await db.getAllAsync('SELECT valor FROM configuracoes WHERE chave = "dias_aviso"');
       if (result.length > 0) {
         setDiasAviso(parseInt((result as any[])[0].valor) || 30);
       }
@@ -110,7 +110,7 @@ const carregarDados = async () => {
     // Buscar empresas ativas - com tipagem explícita
     let empresasDb: Empresa[] = [];
     try {
-      const result = await db.getAllAsync('SELECT * FROM empresas WHERE ativo = 1 ORDER BY nomeFantasia ASC');
+      const result = await db.getAllAsync('SELECT * FROM empresas WHERE ativo = 1 ORDER BY nome_fantasia ASC');
       empresasDb = result as Empresa[];
     } catch (tableError) {
       console.log('Tabela empresas não encontrada ou vazia');
@@ -120,7 +120,7 @@ const carregarDados = async () => {
     // Buscar todas as visitas - com tipagem explícita
     let visitasDb: Visita[] = [];
     try {
-      const result = await db.getAllAsync('SELECT * FROM visitas ORDER BY dataVisita DESC');
+      const result = await db.getAllAsync('SELECT * FROM visitas ORDER BY data_visita DESC');
       visitasDb = result as Visita[];
     } catch (tableError) {
       console.log('Tabela visitas não encontrada ou vazia');
@@ -140,10 +140,10 @@ const carregarDados = async () => {
     
     for (const empresa of empresasDb) {
       // Filtrar visitas da empresa
-      const visitasEmpresa = visitasDb.filter(v => v.empresaId === empresa.id);
+      const visitasEmpresa = visitasDb.filter(v => v.empresa_id === empresa.id);
       
       // Ordenar por data (mais recente primeiro)
-      visitasEmpresa.sort((a, b) => new Date(b.dataVisita).getTime() - new Date(a.dataVisita).getTime());
+      visitasEmpresa.sort((a, b) => new Date(b.data_visita).getTime() - new Date(a.data_visita).getTime());
       
       const ultimaVisita = visitasEmpresa.length > 0 ? visitasEmpresa[0] : null;
       
@@ -153,7 +153,7 @@ const carregarDados = async () => {
       
       if (ultimaVisita) {
         const hoje = new Date();
-        const ultimaData = new Date(ultimaVisita.dataVisita);
+        const ultimaData = new Date(ultimaVisita.data_visita);
         const diffTime = hoje.getTime() - ultimaData.getTime();
         diasDesdeUltimaVisita = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
@@ -179,7 +179,7 @@ const carregarDados = async () => {
     setEmpresas(empresasComVisitas);
     
     // Extrair datas disponíveis para relatório
-    const datas = [...new Set(visitasDb.map(v => v.dataVisita))];
+    const datas = [...new Set(visitasDb.map(v => v.data_visita))];
     datas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
     setDatasDisponiveis(datas);
     
@@ -207,8 +207,8 @@ const carregarDados = async () => {
 
   // Pesquisar empresas
   const empresasFiltradas = empresas.filter(empresa =>
-    empresa.codigoReferencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
-    empresa.nomeFantasia?.toLowerCase().includes(pesquisa.toLowerCase())
+    empresa.codigo_referencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+    empresa.nome_fantasia?.toLowerCase().includes(pesquisa.toLowerCase())
   );
 
   // Agrupar empresas por data da última visita
@@ -218,7 +218,7 @@ const carregarDados = async () => {
     for (const empresa of empresasFiltradas) {
       let chave = 'Nunca visitada';
       if (empresa.ultimaVisita) {
-        const data = new Date(empresa.ultimaVisita.dataVisita);
+        const data = new Date(empresa.ultimaVisita.data_visita);
         chave = data.toLocaleDateString('pt-BR');
       }
       
@@ -255,7 +255,7 @@ const carregarDados = async () => {
   try {
     // Buscar visitas da data selecionada
     const visitasDataResult = await db.getAllAsync(
-      'SELECT * FROM visitas WHERE dataVisita = ?',
+      'SELECT * FROM visitas WHERE data_visita = ?',
       [data]
     );
     const visitasData = visitasDataResult as Visita[];
@@ -271,15 +271,15 @@ const carregarDados = async () => {
     
     for (const visita of visitasData) {
       const empresaResult = await db.getAllAsync(
-        'SELECT nomeFantasia, codigoReferencia FROM empresas WHERE id = ?',
-        [visita.empresaId]
+        'SELECT nome_fantasia, codigo_referencia FROM empresas WHERE id = ?',
+        [visita.empresa_id]
       );
       const empresaData = empresaResult[0] as any;
       
       relatorioContent += `📋 VISITA\n`;
-      relatorioContent += `Empresa: ${empresaData?.nomeFantasia || 'N/A'} (${empresaData?.codigoReferencia || 'N/A'})\n`;
-      relatorioContent += `Data: ${new Date(visita.dataVisita).toLocaleDateString('pt-BR')}\n`;
-      relatorioContent += `Horário: ${visita.horaInicio} - ${visita.horaTermino}\n`;
+      relatorioContent += `Empresa: ${empresaData?.nome_fantasia || 'N/A'} (${empresaData?.codigo_referencia || 'N/A'})\n`;
+      relatorioContent += `Data: ${new Date(visita.data_visita).toLocaleDateString('pt-BR')}\n`;
+      relatorioContent += `Horário: ${visita.hora_inicio} - ${visita.hora_termino}\n`;
       relatorioContent += `Descrição: ${visita.descricao}\n`;
       relatorioContent += `${'-'.repeat(30)}\n\n`;
     }
@@ -323,7 +323,7 @@ const carregarDados = async () => {
       if (!item.ultimaVisita) return '🚫 Nunca visitada';
       if (item.statusAtraso === 'critico') return `⚠️ ${item.diasDesdeUltimaVisita} dias sem visita!`;
       if (item.statusAtraso === 'atencao') return `📢 ${item.diasDesdeUltimaVisita} dias sem visita`;
-      return `✅ Última visita: ${new Date(item.ultimaVisita.dataVisita).toLocaleDateString('pt-BR')}`;
+      return `✅ Última visita: ${new Date(item.ultimaVisita.data_visita).toLocaleDateString('pt-BR')}`;
     };
     
     return (
@@ -344,8 +344,8 @@ const carregarDados = async () => {
           </View>
           
           <View style={styles.cardInfo}>
-            <Text style={styles.cardCodigo}>🔢 {item.codigoReferencia}</Text>
-            <Text style={styles.cardNome}>{item.nomeFantasia}</Text>
+            <Text style={styles.cardCodigo}>🔢 {item.codigo_referencia}</Text>
+            <Text style={styles.cardNome}>{item.nome_fantasia}</Text>
             <View style={styles.cardContatoContainer}>
               <Text style={styles.cardContatoIcon}>📱</Text>
               <Text style={styles.cardContato}>{item.contato}</Text>

@@ -2,25 +2,16 @@ import { db } from './initDatabase';
 
 export type VisitaDB = {
   id: string;
-
   empresa_id: string;
-
-  consultor_id: string;
-
+  consultor_id: string | null;
   data_visita: string;
-
   solicitante: string;
-
   hora_inicio: string;
-
   hora_termino: string;
-
   descricao: string;
-
   status: string;
-
+  assinatura: string | null;
   created_at: string;
-
   updated_at: string | null;
 };
 
@@ -163,7 +154,19 @@ ultima_visita ASC`
 },
 
   async inserir(
-    valores: any[]
+    visita: {
+      id: string;
+      empresa_id: string;
+      consultor_id?: string | null;
+      solicitante: string;
+      data_visita: string;
+      hora_inicio: string;
+      hora_termino: string;
+      descricao: string;
+      status?: string;
+      assinatura?: string | null;
+      created_at: string;
+    }
   ) {
 
     return await db.runAsync(
@@ -175,9 +178,9 @@ ultima_visita ASC`
 
         consultor_id,
 
-        data_visita,
-
         solicitante,
+
+        data_visita,
 
         hora_inicio,
 
@@ -187,12 +190,26 @@ ultima_visita ASC`
 
         status,
 
+        assinatura,
+
         created_at
 
       )
 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      valores
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        visita.id,
+        visita.empresa_id,
+        visita.consultor_id ?? null,
+        visita.solicitante,
+        visita.data_visita,
+        visita.hora_inicio,
+        visita.hora_termino,
+        visita.descricao,
+        visita.status ?? 'CONCLUIDA',
+        visita.assinatura ?? null,
+        visita.created_at
+      ]
     );
 
   },

@@ -73,6 +73,7 @@ export const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS visitas (
         id TEXT PRIMARY KEY,
         empresa_id TEXT NOT NULL,
+        consultor_id TEXT,
         solicitante TEXT NOT NULL,
         data_visita TEXT NOT NULL,
         hora_inicio TEXT NOT NULL,
@@ -94,9 +95,14 @@ export const initDatabase = async () => {
       'PRAGMA table_info(visitas)'
     );
 
-  const possuiStatus =
+    const possuiStatus =
     (tableInfo as any[]).some(
       coluna => coluna.name === 'status'
+    );
+
+  const possuiConsultor =
+    (tableInfo as any[]).some(
+      coluna => coluna.name === 'consultor_id'
     );
 
   if (!possuiStatus) {
@@ -108,6 +114,19 @@ export const initDatabase = async () => {
 
     console.log(
       '✅ Coluna status adicionada em visitas'
+    );
+
+  }
+
+  if (!possuiConsultor) {
+
+    await db.execAsync(`
+      ALTER TABLE visitas
+      ADD COLUMN consultor_id TEXT
+    `);
+
+    console.log(
+      'Coluna consultor_id adicionada em visitas'
     );
 
   }

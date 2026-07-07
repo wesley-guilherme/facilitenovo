@@ -34,7 +34,6 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useConsultor } from '../contexts/ConsultorContext';
-import { useEmpresa } from '../contexts/EmpresaContext';
 import CampoEmpresa from '../components/FormularioVisita/CampoEmpresa';
 import CampoSolicitante from '../components/FormularioVisita/CampoSolicitante';
 import CampoData from '../components/FormularioVisita/CampoData';
@@ -42,10 +41,9 @@ import CampoHorario from '../components/FormularioVisita/CampoHorario';
 import CampoDescricao from '../components/FormularioVisita/CampoDescricao';
 import type { EmpresaDB } from '../database/empresaRepository';
 import { db } from '../database/initDatabase'
+import { VisitasRepository } from '../database/VisitasRepository';
 import DateTimePicker, { DateTimePickerEvent, DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import SignatureScreen from 'react-native-signature-canvas';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 
 const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -63,9 +61,8 @@ type TextoPredefinido = {
 
 export default function FormularioVisitaScreen() {
   const navigation = useNavigation<FormularioVisitaScreenNavigationProp>();
-  const route = useRoute();
+  const route = useRoute<any>();
   const { consultor } = useConsultor();
-  const { empresa: empresaConsultor } = useEmpresa();
 
   
   // Estados das abas
@@ -96,6 +93,22 @@ export default function FormularioVisitaScreen() {
   useEffect(() => {
     carregarTextosPredefinidos();
   }, []);
+
+  useEffect(() => {
+    const empresaParam = route.params?.empresa;
+
+    if (empresaParam) {
+      selecionarEmpresa(empresaParam as EmpresaDB);
+    }
+  }, [route.params?.empresa]);
+
+  const formatarDataBanco = (data: Date) => {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+
+    return `${ano}-${mes}-${dia}`;
+  };
 
   const carregarTextosPredefinidos = async () => {
     try {
@@ -296,7 +309,10 @@ const carregarUltimaVisita = async (
     empresaId === '' ||
     empresaId === 'undefined' ||
     empresaId === 'null'
-  ) 
+  ) {
+    setUltimaVisita(null);
+    return;
+  }
 
 try {
 
@@ -312,6 +328,11 @@ const visitas =
     [String(empresaId)]
   );
 
+  setUltimaVisita(
+    visitas.length > 0
+      ? visitas[0]
+      : null
+  );
 
 } catch(error) {
 
@@ -407,22 +428,19 @@ const visitas =
     setLoading(true);
     try {
       const visitaId = Date.now().toString();
-      await db.runAsync(
-        `INSERT INTO visitas (id, empresaId, solicitante, dataVisita, horaInicio, horaTermino, descricao, assinatura, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          visitaId,
-          empresaId,
-          solicitante,
-          dataVisita,
-          horaInicio,
-          horaTermino,
-          descricao,
-          assinatura,
-          new Date().toISOString(),
-          new Date().toISOString(),
-        ]
-      );
+      await VisitasRepository.inserir({
+        id: visitaId,
+        empresa_id: empresaId,
+        consultor_id: consultor?.id || null,
+        solicitante: solicitante.trim(),
+        data_visita: formatarDataBanco(dataSelecionada),
+        hora_inicio: horaInicio,
+        hora_termino: horaTermino,
+        descricao: descricao.trim(),
+        status: 'CONCLUIDA',
+        assinatura,
+        created_at: new Date().toISOString()
+      });
       
       Alert.alert(
         'Sucesso',
@@ -476,7 +494,7 @@ const visitas =
           <View style={styles.logoPlaceholder}>
             <Text style={styles.logoPlaceholderIcon}>🏢</Text>
             <Text style={styles.logoPlaceholderText}>
-              {empresaSelecionada ? 'Logo da Empresa' : 'Selecione uma empresa'}
+              {empresaSelecionada ? 'Logo da Empresa' : ''}
             </Text>
           </View>
         )}
@@ -563,22 +581,25 @@ const renderAssinaturaAba = () => (
 
     <View style={styles.signatureContainer}>
 
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: 'bold'
-          }}
-        >
-          TESTE ASSINATURA
-        </Text>
-      </View>
+      <SignatureScreen
+        ref={signatureRef}
+        onOK={handleSignature}
+        onEmpty={() =>
+          Alert.alert(
+            'Aviso',
+            'Peça para o cliente assinar antes de salvar'
+          )
+        }
+        onEnd={() =>
+          signatureRef.current?.readSignature()
+        }
+        autoClear={false}
+        descriptionText=""
+        clearText="Limpar"
+        confirmText="Confirmar"
+        webStyle={signatureWebStyle}
+        style={styles.signature}
+      />
 
     </View>
 
@@ -685,33 +706,35 @@ const renderAssinaturaAba = () => (
               {textosPredefinidos.length === 0 && (
                 <Text style={styles.modalEmptyText}>Nenhum texto predefinido cadastrado</Text>
               )}
-                {showDatePicker && (
-
-  <DateTimePicker
-    value={dataSelecionada}
-    mode="date"
-    display="default"
-    onChange={onChangeData}
-    maximumDate={new Date()}
-  />
-)}
-
-  <DateTimePicker
-  value={horaSelecionada}
-  mode="time"
-  is24Hour
-  onChange={(event, date) =>
-    onChangeHora(
-      tipoHoraAtual,
-      event,
-      date
-    )
-  }
-/>
             </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={dataSelecionada}
+          mode="date"
+          display="default"
+          onChange={onChangeData}
+          maximumDate={new Date()}
+        />
+      )}
+
+      {showHoraPicker && (
+        <DateTimePicker
+          value={horaSelecionada}
+          mode="time"
+          is24Hour
+          onChange={(event, date) =>
+            onChangeHora(
+              tipoHoraAtual,
+              event,
+              date
+            )
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }

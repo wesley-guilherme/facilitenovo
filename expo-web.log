@@ -1,0 +1,24 @@
+Starting project at C:\Facilitenovo
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web .\index.ts ▓░░░░░░░░░░░░░░░ 12.2% (21/71)
+Web .\index.ts ▓▓▓▓░░░░░░░░░░░░ 26.9% ( 70/135)
+Web .\index.ts ▓▓▓▓▓▓░░░░░░░░░░ 40.0% (176/292)
+Web .\index.ts ▓▓▓▓▓▓▓░░░░░░░░░ 44.1% (281/423)
+Web .\index.ts ▓▓▓▓▓▓▓▓░░░░░░░░ 50.4% (397/587)
+Web .\index.ts ▓▓▓▓▓▓▓▓░░░░░░░░ 55.0% (526/709)
+Web .\index.ts ▓▓▓▓▓▓▓▓▓▓░░░░░░ 64.4% (651/811)
+Web .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 75.4% (780/898)
+Web .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.7% ( 951/1004)
+Web .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1108/1108)
+Web Bundled 38476ms index.ts (1110 modules)
+Web node_modules\expo-sqlite\web\worker.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+ LOG  [web] Logs will appear in the browser console
+Web Bundled 2034ms node_modules\expo-sqlite\web\worker.ts (16 modules)
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 1063ms index.ts (1 module)
+Web Bundled 420ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
