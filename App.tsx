@@ -2,10 +2,10 @@
  * App.tsx - COM CABEÇALHO PERSONALIZADO APENAS NA HOME
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
-import { StatusBar, Text, Image, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StatusBar, Text, Image, StyleSheet, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { initDatabase } from './src/database/initDatabase';
 import HomeScreen from './src/screens/HomeScreen';
 import MeuPerfilScreen from './src/screens/MeuPerfilScreen';
@@ -59,10 +59,22 @@ function CustomHeader({ navigation }: any) {
 }
 
 export default function App() {
+  const [dbReady, setDbReady] = useState(false);
+
   // Inicializar banco de dados
   useEffect(() => {
-    initDatabase().catch(console.error);
+    initDatabase()
+      .catch(console.error)
+      .finally(() => setDbReady(true));
   }, []);
+
+  if (!dbReady) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2463EB" />
+      </View>
+    );
+  }
 
   return (
     <ConsultorProvider>
@@ -193,6 +205,12 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F9FC',
+  },
   customHeader: {
     flexDirection: 'row',
     alignItems: 'center',

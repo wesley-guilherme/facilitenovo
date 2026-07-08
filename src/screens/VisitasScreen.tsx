@@ -39,6 +39,28 @@ import { db } from '../database/initDatabase';
 const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
+const formatarDataBR = (data: string) => {
+  const partes = data.split('-');
+
+  if (partes.length === 3) {
+    const [ano, mes, dia] = partes;
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  return new Date(data).toLocaleDateString('pt-BR');
+};
+
+const criarDataLocal = (data: string) => {
+  const partes = data.split('-').map(Number);
+
+  if (partes.length === 3) {
+    const [ano, mes, dia] = partes;
+    return new Date(ano, mes - 1, dia);
+  }
+
+  return new Date(data);
+};
+
 type VisitasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Visitas'>;
 
 // Tipo para Empresa
@@ -153,7 +175,7 @@ const carregarDados = async () => {
       
       if (ultimaVisita) {
         const hoje = new Date();
-        const ultimaData = new Date(ultimaVisita.data_visita);
+        const ultimaData = criarDataLocal(ultimaVisita.data_visita);
         const diffTime = hoje.getTime() - ultimaData.getTime();
         diasDesdeUltimaVisita = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
@@ -218,8 +240,7 @@ const carregarDados = async () => {
     for (const empresa of empresasFiltradas) {
       let chave = 'Nunca visitada';
       if (empresa.ultimaVisita) {
-        const data = new Date(empresa.ultimaVisita.data_visita);
-        chave = data.toLocaleDateString('pt-BR');
+        chave = formatarDataBR(empresa.ultimaVisita.data_visita);
       }
       
       if (!grupos[chave]) {
@@ -266,7 +287,7 @@ const carregarDados = async () => {
     }
     
     // Buscar empresas relacionadas
-    let relatorioContent = `RELATÓRIO DE VISITAS - ${new Date(data).toLocaleDateString('pt-BR')}\n`;
+    let relatorioContent = `RELATÓRIO DE VISITAS - ${formatarDataBR(data)}\n`;
     relatorioContent += `${'='.repeat(50)}\n\n`;
     
     for (const visita of visitasData) {
@@ -278,7 +299,7 @@ const carregarDados = async () => {
       
       relatorioContent += `📋 VISITA\n`;
       relatorioContent += `Empresa: ${empresaData?.nome_fantasia || 'N/A'} (${empresaData?.codigo_referencia || 'N/A'})\n`;
-      relatorioContent += `Data: ${new Date(visita.data_visita).toLocaleDateString('pt-BR')}\n`;
+      relatorioContent += `Data: ${formatarDataBR(visita.data_visita)}\n`;
       relatorioContent += `Horário: ${visita.hora_inicio} - ${visita.hora_termino}\n`;
       relatorioContent += `Descrição: ${visita.descricao}\n`;
       relatorioContent += `${'-'.repeat(30)}\n\n`;
@@ -295,7 +316,7 @@ const carregarDados = async () => {
     if (isAvailable) {
       await Sharing.shareAsync(filePath, {
         mimeType: 'text/plain',
-        dialogTitle: `Enviar relatório de ${new Date(data).toLocaleDateString('pt-BR')}`,
+        dialogTitle: `Enviar relatório de ${formatarDataBR(data)}`,
       });
     } else {
       Alert.alert('Erro', 'Compartilhamento não disponível');
@@ -323,7 +344,7 @@ const carregarDados = async () => {
       if (!item.ultimaVisita) return '🚫 Nunca visitada';
       if (item.statusAtraso === 'critico') return `⚠️ ${item.diasDesdeUltimaVisita} dias sem visita!`;
       if (item.statusAtraso === 'atencao') return `📢 ${item.diasDesdeUltimaVisita} dias sem visita`;
-      return `✅ Última visita: ${new Date(item.ultimaVisita.data_visita).toLocaleDateString('pt-BR')}`;
+      return `✅ Última visita: ${formatarDataBR(item.ultimaVisita.data_visita)}`;
     };
     
     return (
@@ -474,7 +495,7 @@ const carregarDados = async () => {
                 >
                   <Text style={styles.modalItemIcon}>📋</Text>
                   <Text style={styles.modalItemText}>
-                    {new Date(data).toLocaleDateString('pt-BR')}
+                    {formatarDataBR(data)}
                   </Text>
                   <Text style={styles.modalItemArrow}>→</Text>
                 </TouchableOpacity>

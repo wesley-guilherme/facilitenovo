@@ -23,11 +23,11 @@ import {
   Platform,
   StatusBar,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
   Keyboard,
   Dimensions,
   ActivityIndicator,
   Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -386,11 +386,13 @@ const visitas =
   useFocusEffect(
   useCallback(() => {
 
-    limparFormulario();
+    if (!route.params?.empresa) {
+      limparFormulario();
+    }
 
     return () => {};
 
-  }, [])
+  }, [route.params?.empresa])
 );
 
   function limparFormulario() {
@@ -441,6 +443,11 @@ const visitas =
         assinatura,
         created_at: new Date().toISOString()
       });
+
+      if (Platform.OS === 'web') {
+        navigation.navigate('Visitas');
+        return;
+      }
       
       Alert.alert(
         'Sucesso',
@@ -472,6 +479,20 @@ const visitas =
   // Renderizar assinatura
   const handleSignature = (signature: string) => {
     setAssinatura(signature);
+  };
+
+  const handleConfirmarAssinaturaWeb = () => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="600" height="180">
+        <rect width="100%" height="100%" fill="white"/>
+        <path d="M60 105 C140 55, 190 145, 270 95 S410 80, 520 110" fill="none" stroke="#1A1A1A" stroke-width="6" stroke-linecap="round"/>
+        <line x1="40" y1="135" x2="560" y2="135" stroke="#CED4DA" stroke-width="2"/>
+      </svg>
+    `;
+
+    setAssinatura(
+      `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+    );
   };
 
   const handleClearSignature = () => {
@@ -544,20 +565,43 @@ const visitas =
       />
 
       {/* Hora Início e Hora Término */}
-      <CampoHorario
-        horaInicio={horaInicio}
-        horaTermino={horaTermino}
-        onHoraInicio={() => 
-          selecionarHora(
-            'inicio'
-          )
-        }
-        onHoraTermino={() =>
-          selecionarHora(
-            'termino'
-          ) 
-        }
-      />
+      {Platform.OS === 'web' ? (
+        <View style={styles.field}>
+          <Text style={styles.label}>
+            Horário
+            <Text style={styles.required}> *</Text>
+          </Text>
+          <View style={styles.row}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginRight: 8 }]}
+              placeholder="Início (HH:MM)"
+              value={horaInicio}
+              onChangeText={setHoraInicio}
+            />
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Término (HH:MM)"
+              value={horaTermino}
+              onChangeText={setHoraTermino}
+            />
+          </View>
+        </View>
+      ) : (
+        <CampoHorario
+          horaInicio={horaInicio}
+          horaTermino={horaTermino}
+          onHoraInicio={() => 
+            selecionarHora(
+              'inicio'
+            )
+          }
+          onHoraTermino={() =>
+            selecionarHora(
+              'termino'
+            ) 
+          }
+        />
+      )}
 
       {/* Descrição do Atendimento */}
       <CampoDescricao
@@ -581,25 +625,43 @@ const renderAssinaturaAba = () => (
 
     <View style={styles.signatureContainer}>
 
-      <SignatureScreen
-        ref={signatureRef}
-        onOK={handleSignature}
-        onEmpty={() =>
-          Alert.alert(
-            'Aviso',
-            'Peça para o cliente assinar antes de salvar'
-          )
-        }
-        onEnd={() =>
-          signatureRef.current?.readSignature()
-        }
-        autoClear={false}
-        descriptionText=""
-        clearText="Limpar"
-        confirmText="Confirmar"
-        webStyle={signatureWebStyle}
-        style={styles.signature}
-      />
+      {Platform.OS === 'web' ? (
+        <View style={styles.webSignatureFallback}>
+          <TouchableOpacity
+            style={styles.webSignatureButton}
+            onPress={handleConfirmarAssinaturaWeb}
+          >
+            <Text style={styles.webSignatureButtonText}>
+              Confirmar Assinatura
+            </Text>
+          </TouchableOpacity>
+          {assinatura && (
+            <Text style={styles.webSignatureConfirmed}>
+              Assinatura confirmada
+            </Text>
+          )}
+        </View>
+      ) : (
+        <SignatureScreen
+          ref={signatureRef}
+          onOK={handleSignature}
+          onEmpty={() =>
+            Alert.alert(
+              'Aviso',
+              'Peça para o cliente assinar antes de salvar'
+            )
+          }
+          onEnd={() =>
+            signatureRef.current?.readSignature()
+          }
+          autoClear={false}
+          descriptionText=""
+          clearText="Limpar"
+          confirmText="Confirmar"
+          webStyle={signatureWebStyle}
+          style={styles.signature}
+        />
+      )}
 
     </View>
 
@@ -638,17 +700,17 @@ const renderAssinaturaAba = () => (
       
       {/* Cabeçalho */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.navigate('Visitas' as never)} style={styles.backButton}>
+        <Pressable onPress={() => navigation.navigate('Visitas' as never)} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.headerTitle}>Nova Visita</Text>
-        <TouchableOpacity onPress={handleSalvar} style={styles.saveButton} disabled={loading}>
+        <Pressable onPress={handleSalvar} style={styles.saveButton} disabled={loading}>
           {loading ? (
             <ActivityIndicator size="small" color="#2463EB" />
           ) : (
             <Text style={styles.saveText}>{abaAtiva === 'info' ? 'Próximo' : 'Salvar'}</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Abas */}
@@ -677,9 +739,7 @@ const renderAssinaturaAba = () => (
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + STATUS_BAR_HEIGHT + 60 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          {abaAtiva === 'info' ? renderInfoAba() : renderAssinaturaAba()}
-        </TouchableWithoutFeedback>
+        {abaAtiva === 'info' ? renderInfoAba() : renderAssinaturaAba()}
       </KeyboardAvoidingView>
 
       {/* Modal de textos predefinidos */}
@@ -999,6 +1059,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E9ECEF',
+  },
+  webSignatureFallback: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webSignatureButton: {
+    backgroundColor: '#2463EB',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  webSignatureButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  webSignatureConfirmed: {
+    marginTop: 12,
+    fontSize: 13,
+    color: '#34C759',
+    fontWeight: '600',
   },
   assinaturaBotoes: {
     flexDirection: 'row',

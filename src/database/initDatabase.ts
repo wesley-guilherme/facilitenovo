@@ -5,9 +5,46 @@
  */
 
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 // UMA ÚNICA INSTÂNCIA DO BANCO
-export const db = SQLite.openDatabaseSync('facilite.db');
+const dbPromise =
+  Platform.OS === 'web'
+    ? SQLite.openDatabaseAsync('facilite.db')
+    : Promise.resolve(SQLite.openDatabaseSync('facilite.db'));
+
+type DatabaseWrapper = {
+  execAsync: (source: string) => Promise<void>;
+  getAllAsync: <T = any>(source: string, params?: any[]) => Promise<T[]>;
+  getFirstAsync: <T = any>(source: string, params?: any[]) => Promise<T | null>;
+  runAsync: (source: string, params?: any[]) => Promise<SQLite.SQLiteRunResult>;
+};
+
+export const db: DatabaseWrapper = {
+  execAsync: async (source: string) =>
+    (await dbPromise).execAsync(source),
+
+  getAllAsync: async <T>(source: string, params?: any[]) => {
+    const database = await dbPromise;
+    return params === undefined
+      ? database.getAllAsync<T>(source)
+      : database.getAllAsync<T>(source, params);
+  },
+
+  getFirstAsync: async <T>(source: string, params?: any[]) => {
+    const database = await dbPromise;
+    return params === undefined
+      ? database.getFirstAsync<T>(source)
+      : database.getFirstAsync<T>(source, params);
+  },
+
+  runAsync: async (source: string, params?: any[]) => {
+    const database = await dbPromise;
+    return params === undefined
+      ? database.runAsync(source)
+      : database.runAsync(source, params);
+  },
+};
 
 export const initDatabase = async () => {
   try {
