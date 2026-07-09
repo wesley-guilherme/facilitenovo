@@ -67,7 +67,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as ImagePicker from 'expo-image-picker';
-import { db } from '../database/initDatabase'
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const HEADER_HEIGHT = 56;
@@ -324,7 +323,13 @@ const handleExcluirLogo = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await db.runAsync('DELETE FROM empresas WHERE id = ?', [empresa.id]);
+              await EmpresaRepository.excluirPermanente(empresa.id);
+
+              if (Platform.OS === 'web') {
+                navigation.navigate('Empresas');
+                return;
+              }
+
               Alert.alert(
                 'Sucesso',
                 'Empresa excluída com sucesso!',
@@ -424,6 +429,11 @@ const handleExcluirLogo = () => {
         ); 
 
       console.log('✅ 7 - UPDATE executado com sucesso!');
+
+      if (Platform.OS === 'web') {
+        navigation.navigate('Empresas');
+        return;
+      }
       
       Alert.alert(
         'Sucesso',

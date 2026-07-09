@@ -32,6 +32,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Dimensions,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -347,6 +348,12 @@ const valoresInsert = [
       valoresInsert
     );
 
+      if (Platform.OS === 'web') {
+        limparFormulario();
+        navigation.navigate('Empresas');
+        return;
+      }
+
       Alert.alert(
         'Sucesso',
         'Empresa cadastrada com sucesso!',
@@ -375,13 +382,13 @@ const valoresInsert = [
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
-        <TouchableOpacity onPress={handleCancelar} style={styles.cancelButton}>
+        <Pressable onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.headerTitle}>Nova Empresa</Text>
-        <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
+        <Pressable onPress={handleSalvar} style={styles.saveButton}>
           <Text style={styles.saveText}>Salvar</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView 

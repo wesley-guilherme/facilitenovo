@@ -131,5 +131,22 @@ export const EmpresaRepository = {
       'UPDATE empresas SET ativo = 0 WHERE id = ?',
       [id]
     );
+  },
+
+  async excluirPermanente(id: string) {
+    await db.runAsync(
+      'DELETE FROM visitas WHERE empresa_id = ?',
+      [id]
+    );
+
+    await db.runAsync(
+      'DELETE FROM assinaturas WHERE empresa_id = ?',
+      [id]
+    );
+
+    return await db.runAsync(
+      'DELETE FROM empresas WHERE id = ?',
+      [id]
+    );
   }
 };

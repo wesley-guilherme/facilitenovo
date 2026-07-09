@@ -34,14 +34,13 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useConsultor } from '../contexts/ConsultorContext';
-import CampoEmpresa from '../components/FormularioVisita/CampoEmpresa';
 import CampoSolicitante from '../components/FormularioVisita/CampoSolicitante';
 import CampoData from '../components/FormularioVisita/CampoData';
 import CampoHorario from '../components/FormularioVisita/CampoHorario';
 import CampoDescricao from '../components/FormularioVisita/CampoDescricao';
 import type { EmpresaDB } from '../database/empresaRepository';
 import { db } from '../database/initDatabase'
-import { VisitasRepository } from '../database/VisitasRepository';
+import { VisitasRepository, VisitaDB } from '../database/VisitasRepository';
 import DateTimePicker, { DateTimePickerEvent, DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import SignatureScreen from 'react-native-signature-canvas';
 
@@ -85,7 +84,7 @@ export default function FormularioVisitaScreen() {
   const [textosPredefinidos, setTextosPredefinidos] = useState<TextoPredefinido[]>([]);
   const [showTextosModal, setShowTextosModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [ultimaVisita, setUltimaVisita] = useState<any>(null);
+  const [ultimaVisita, setUltimaVisita] = useState<VisitaDB | null>(null);
   
   const signatureRef = useRef<any>(null);
 
@@ -120,6 +119,7 @@ export default function FormularioVisitaScreen() {
   };
 
   const selecionarEmpresa = (empresa: EmpresaDB) => {
+    setAbaAtiva('info');
     setEmpresaSelecionada(empresa);
     setEmpresaId(empresa.id);
     carregarUltimaVisita(empresa.id);
@@ -297,7 +297,36 @@ export default function FormularioVisitaScreen() {
 
 };
 
+const limparDadosDaVisita = () => {
+  setSolicitante('');
+  setHoraInicio('');
+  setHoraTermino('');
+  setDescricao('');
+  setAssinatura(null);
+};
 
+const criarDataDeBanco = (data: string) => {
+  const partes = data.split('-').map(Number);
+
+  if (partes.length === 3) {
+    const [ano, mes, dia] = partes;
+    return new Date(ano, mes - 1, dia);
+  }
+
+  return new Date(data);
+};
+
+const preencherComUltimaVisita = (visita: VisitaDB) => {
+  const dataBanco = criarDataDeBanco(visita.data_visita);
+
+  setSolicitante(visita.solicitante || '');
+  setDataSelecionada(dataBanco);
+  setDataVisita(dataBanco.toLocaleDateString('pt-BR'));
+  setHoraInicio(visita.hora_inicio || '');
+  setHoraTermino(visita.hora_termino || '');
+  setDescricao(visita.descricao || '');
+  setAssinatura(visita.assinatura || null);
+};
 
 // Carregar última visita da empresa (se existir)
 const carregarUltimaVisita = async (
@@ -311,28 +340,26 @@ const carregarUltimaVisita = async (
     empresaId === 'null'
   ) {
     setUltimaVisita(null);
+    limparDadosDaVisita();
     return;
   }
 
 try {
 
-const visitas =
-  await db.getAllAsync(
-    `
-    SELECT *
-    FROM visitas
-    WHERE empresa_id = ?
-    ORDER BY data_visita DESC
-    LIMIT 1
-    `,
-    [String(empresaId)]
+const visita =
+  await VisitasRepository.buscarUltimoFormulario(
+    String(empresaId)
   );
 
   setUltimaVisita(
-    visitas.length > 0
-      ? visitas[0]
-      : null
+    visita
   );
+
+  if (visita) {
+    preencherComUltimaVisita(visita);
+  } else {
+    limparDadosDaVisita();
+  }
 
 } catch(error) {
 
@@ -401,15 +428,11 @@ const visitas =
 
   setEmpresaId('');
 
-  setSolicitante('');
+  setAbaAtiva('info');
 
-  setDescricao('');
+  limparDadosDaVisita();
 
-  setHoraInicio('');
-
-  setHoraTermino('');
-
-  setAssinatura(null);
+  setUltimaVisita(null);
 
 }
 
@@ -430,7 +453,7 @@ const visitas =
     setLoading(true);
     try {
       const visitaId = Date.now().toString();
-      await VisitasRepository.inserir({
+      await VisitasRepository.salvarFormularioUnico({
         id: visitaId,
         empresa_id: empresaId,
         consultor_id: consultor?.id || null,
@@ -528,19 +551,7 @@ const visitas =
       </View>
   
 
-      {/* Botão Buscar Empresa */}
-    <CampoEmpresa
-  value={empresaSelecionada}
-  onSelect={(empresa) => {
-    setEmpresaSelecionada(empresa);
-    setEmpresaId(empresa.id);
-
-    carregarUltimaVisita(empresa.id)
-  }}
-  
-/>
-<View style={{ marginBottom: 16}} />
-
+      {/* Empresa vinculada ao formulario */}
       {empresaSelecionada && (
         <View style={styles.selectedEmpresaCard}>
           <Text style={styles.selectedEmpresaCodigo}>🔢 {empresaSelecionada.codigo_referencia}</Text>

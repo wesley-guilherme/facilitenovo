@@ -9,7 +9,7 @@
  * - Agrupamento por data
  * - Pesquisa por nome ou código
  * - Geração de relatório compactado (ZIP) das visitas por data
- * - FAB para criar nova visita
+ * - A visita e acessada pelo card da empresa
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -219,12 +219,8 @@ const carregarDados = async () => {
     navigation.goBack();
   };
 
-  const handleNovaVisita = (empresa?: EmpresaComUltimaVisita) => {
-    if (empresa) {
-      navigation.navigate('FormularioVisita', { empresa } as any);
-    } else {
-      navigation.navigate('FormularioVisita' as any);
-    }
+  const handleAbrirFormularioEmpresa = (empresa: EmpresaComUltimaVisita) => {
+    navigation.navigate('FormularioVisita', { empresa } as any);
   };
 
   // Pesquisar empresas
@@ -350,7 +346,7 @@ const carregarDados = async () => {
     return (
       <TouchableOpacity
         style={[styles.card, getCardStyle()]}
-        onPress={() => handleNovaVisita(item)}
+        onPress={() => handleAbrirFormularioEmpresa(item)}
         activeOpacity={0.7}
       >
         <View style={styles.cardContent}>
@@ -435,9 +431,9 @@ const carregarDados = async () => {
       ) : Object.keys(grupos).length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={styles.emptyText}>Nenhuma visita registrada</Text>
+          <Text style={styles.emptyText}>Nenhuma empresa ativa cadastrada</Text>
           <Text style={styles.emptySubtext}>
-            Toque no botão + para registrar uma nova visita
+            Cadastre ou ative uma empresa para abrir o formulário de visita
           </Text>
         </View>
       ) : (
@@ -460,14 +456,6 @@ const carregarDados = async () => {
           ))}
         </ScrollView>
       )}
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => handleNovaVisita()}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
 
       <Modal
         animationType="fade"
@@ -717,28 +705,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#ADB5BD',
     marginLeft: 12,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2463EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 10,
-  },
-  fabIcon: {
-    fontSize: 32,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
