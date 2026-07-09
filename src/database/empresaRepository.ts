@@ -15,6 +15,7 @@ export type EmpresaDB = {
   logo: string | null;
   ativo: number;
   rota: string | null;
+  deleted_at: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -26,6 +27,7 @@ export const EmpresaRepository = {
   return await db.getAllAsync<EmpresaDB>(
     `SELECT *
      FROM empresas
+     WHERE deleted_at IS NULL
      ORDER BY nome_fantasia ASC`
   );
 
@@ -33,7 +35,10 @@ export const EmpresaRepository = {
 
   async buscarPorCodigo(codigo: string) {
     return await db.getFirstAsync(
-      'SELECT * FROM empresas WHERE codigo_referencia = ?',
+      `SELECT *
+       FROM empresas
+       WHERE codigo_referencia = ?
+       AND deleted_at IS NULL`,
       [codigo]
     );
   },
@@ -41,7 +46,10 @@ export const EmpresaRepository = {
   async existeCodigo(codigo: string) {
     const resultado = 
       await db.getFirstAsync(
-        'SELECT id FROM empresas WHERE codigo_referencia = ?',
+        `SELECT id
+         FROM empresas
+         WHERE codigo_referencia = ?
+         AND deleted_at IS NULL`,
         [codigo]
     );
 
@@ -57,7 +65,8 @@ export const EmpresaRepository = {
       `SELECT id
        FROM empresas
        WHERE codigo_referencia = ?
-       AND id <> ?`,
+       AND id <> ?
+       AND deleted_at IS NULL`,
       [codigo, empresaId]
     );
 
@@ -128,12 +137,18 @@ export const EmpresaRepository = {
 
   async excluir(id: string) {
     return await db.runAsync(
-      'UPDATE empresas SET ativo = 0 WHERE id = ?',
-      [id]
+      `UPDATE empresas
+       SET ativo = 0,
+           updated_at = ?
+       WHERE id = ?
+       AND deleted_at IS NULL`,
+      [new Date().toISOString(), id]
     );
   },
 
   async excluirPermanente(id: string) {
+    const agora = new Date().toISOString();
+
     await db.runAsync(
       'DELETE FROM visitas WHERE empresa_id = ?',
       [id]
@@ -145,8 +160,12 @@ export const EmpresaRepository = {
     );
 
     return await db.runAsync(
-      'DELETE FROM empresas WHERE id = ?',
-      [id]
+      `UPDATE empresas
+       SET ativo = 0,
+           deleted_at = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [agora, agora, id]
     );
   }
 };

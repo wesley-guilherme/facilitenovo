@@ -85,7 +85,7 @@ export const initDatabase = async () => {
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS empresas (
         id TEXT PRIMARY KEY,
-        codigo_referencia TEXT NOT NULL UNIQUE,
+        codigo_referencia TEXT NOT NULL,
         nome_fantasia TEXT NOT NULL,
         proprietario TEXT,
         cidade TEXT NOT NULL,
@@ -98,9 +98,133 @@ export const initDatabase = async () => {
         logo TEXT,
         ativo INTEGER DEFAULT 1,
         rota TEXT,
+        deleted_at TEXT,
         created_at TEXT,
         updated_at TEXT
       );
+    `);
+
+    const empresasInfo = await db.getAllAsync(
+      'PRAGMA table_info(empresas)'
+    );
+
+    const possuiDeletedAt = (empresasInfo as any[]).some(
+      (coluna) => coluna.name === 'deleted_at'
+    );
+
+    if (!possuiDeletedAt) {
+      await db.execAsync(`
+        ALTER TABLE empresas
+        ADD COLUMN deleted_at TEXT
+      `);
+
+      console.log('Coluna deleted_at adicionada em empresas');
+    }
+
+    const indicesEmpresas = await db.getAllAsync(
+      'PRAGMA index_list(empresas)'
+    );
+
+    let possuiUniqueAntigoNoCodigo = false;
+
+    for (const indice of indicesEmpresas as any[]) {
+      if (indice.unique !== 1) {
+        continue;
+      }
+
+      const colunasIndice = await db.getAllAsync(
+        `PRAGMA index_info(${indice.name})`
+      );
+
+      const nomesColunas = (colunasIndice as any[]).map(
+        (coluna) => coluna.name
+      );
+
+      if (
+        nomesColunas.length === 1 &&
+        nomesColunas[0] === 'codigo_referencia'
+      ) {
+        possuiUniqueAntigoNoCodigo = true;
+        break;
+      }
+    }
+
+    if (possuiUniqueAntigoNoCodigo) {
+      await db.execAsync(`
+        PRAGMA foreign_keys = OFF;
+
+        CREATE TABLE IF NOT EXISTS empresas_nova (
+          id TEXT PRIMARY KEY,
+          codigo_referencia TEXT NOT NULL,
+          nome_fantasia TEXT NOT NULL,
+          proprietario TEXT,
+          cidade TEXT NOT NULL,
+          estado TEXT DEFAULT 'SP',
+          endereco TEXT NOT NULL,
+          numero TEXT NOT NULL,
+          email TEXT NOT NULL,
+          contato TEXT NOT NULL,
+          anotacoes TEXT,
+          logo TEXT,
+          ativo INTEGER DEFAULT 1,
+          rota TEXT,
+          deleted_at TEXT,
+          created_at TEXT,
+          updated_at TEXT
+        );
+
+        INSERT INTO empresas_nova (
+          id,
+          codigo_referencia,
+          nome_fantasia,
+          proprietario,
+          cidade,
+          estado,
+          endereco,
+          numero,
+          email,
+          contato,
+          anotacoes,
+          logo,
+          ativo,
+          rota,
+          deleted_at,
+          created_at,
+          updated_at
+        )
+        SELECT
+          id,
+          codigo_referencia,
+          nome_fantasia,
+          proprietario,
+          cidade,
+          estado,
+          endereco,
+          numero,
+          email,
+          contato,
+          anotacoes,
+          logo,
+          ativo,
+          rota,
+          deleted_at,
+          created_at,
+          updated_at
+        FROM empresas;
+
+        DROP TABLE empresas;
+        ALTER TABLE empresas_nova RENAME TO empresas;
+
+        PRAGMA foreign_keys = ON;
+      `);
+
+      console.log('Restricao UNIQUE antiga removida de empresas.codigo_referencia');
+    }
+
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_empresas_codigo_nao_excluidas
+      ON empresas (codigo_referencia)
+      WHERE deleted_at IS NULL;
     `);
 
     // ==========================

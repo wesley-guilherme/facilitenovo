@@ -35,6 +35,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Dimensions,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -313,6 +314,23 @@ const handleExcluirLogo = () => {
 
   // Função para excluir o cadastro completo
   const handleExcluirCadastro = () => {
+    if (Platform.OS === 'web') {
+      const confirmou = globalThis.confirm(
+        'Tem certeza que deseja excluir permanentemente esta empresa? Esta acao nao pode ser desfeita.'
+      );
+
+      if (confirmou) {
+        EmpresaRepository.excluirPermanente(empresa.id)
+          .then(() => navigation.navigate('Empresas'))
+          .catch((error) => {
+            console.error('Erro ao excluir empresa:', error);
+            Alert.alert('Erro', 'Nao foi possivel excluir a empresa');
+          });
+      }
+
+      return;
+    }
+
     Alert.alert(
       'Excluir Cadastro',
       'Tem certeza que deseja excluir permanentemente esta empresa? Esta ação não pode ser desfeita.',
@@ -469,9 +487,14 @@ const handleExcluirLogo = () => {
           <Text style={styles.cancelText}>Cancelar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar Empresa</Text>
-        <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
-          <Text style={styles.saveText}>Salvar</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleExcluirCadastro} style={styles.headerDeleteButton}>
+            <Text style={styles.headerDeleteText}>Excluir</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
+            <Text style={styles.saveText}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView 
@@ -479,7 +502,10 @@ const handleExcluirLogo = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + 50 + 20 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback
+          onPress={Keyboard.dismiss}
+          disabled={Platform.OS === 'web'}
+        >
           <ScrollView 
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -720,13 +746,23 @@ const handleExcluirLogo = () => {
               </View>
 
               {/* Botão Excluir Cadastro */}
-              <TouchableOpacity 
+              <Pressable 
                 style={styles.excluirButton} 
                 onPress={handleExcluirCadastro}
-                activeOpacity={0.7}
+                {...(Platform.OS === 'web'
+                  ? ({ onClick: handleExcluirCadastro } as any)
+                  : {})}
               >
-                <Text style={styles.excluirButtonText}>Excluir Cadastro</Text>
-              </TouchableOpacity>
+                <Text
+                  style={styles.excluirButtonText}
+                  onPress={handleExcluirCadastro}
+                  {...(Platform.OS === 'web'
+                    ? ({ onClick: handleExcluirCadastro } as any)
+                    : {})}
+                >
+                  Excluir Cadastro
+                </Text>
+              </Pressable>
             </View>
           </ScrollView>
         </TouchableWithoutFeedback>
@@ -773,6 +809,19 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     padding: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerDeleteButton: {
+    padding: 8,
+    marginRight: 4,
+  },
+  headerDeleteText: {
+    fontSize: 16,
+    color: '#FF3B30',
+    fontWeight: '600',
   },
   saveText: {
     fontSize: 16,

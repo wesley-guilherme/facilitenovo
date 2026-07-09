@@ -53,6 +53,7 @@ type Empresa = {
   anotacoes: string;
   logo: string | null;
   ativo: number; // 1 = ativo, 0 = inativo
+  deleted_at?: string | null;
 };
 
 export default function EmpresasScreen() {
@@ -69,7 +70,9 @@ const carregarEmpresas = async () => {
   try {
     let empresasDb: Empresa[] = [];
     try {
-      const result = await db.getAllAsync('SELECT * FROM empresas ORDER BY nome_fantasia ASC');
+      const result = await db.getAllAsync(
+        'SELECT * FROM empresas WHERE deleted_at IS NULL ORDER BY nome_fantasia ASC'
+      );
       empresasDb = result as Empresa[];
 
 console.log('📋 Empresas encontradas:', empresasDb.length);

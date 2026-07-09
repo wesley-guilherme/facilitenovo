@@ -76,6 +76,7 @@ type Empresa = {
   contato: string;
   rota: string;
   ativo: number;
+  deleted_at?: string | null;
 };
 
 // Tipo para Visita
@@ -132,7 +133,9 @@ const carregarDados = async () => {
     // Buscar empresas ativas - com tipagem explícita
     let empresasDb: Empresa[] = [];
     try {
-      const result = await db.getAllAsync('SELECT * FROM empresas WHERE ativo = 1 ORDER BY nome_fantasia ASC');
+      const result = await db.getAllAsync(
+        'SELECT * FROM empresas WHERE ativo = 1 AND deleted_at IS NULL ORDER BY nome_fantasia ASC'
+      );
       empresasDb = result as Empresa[];
     } catch (tableError) {
       console.log('Tabela empresas não encontrada ou vazia');

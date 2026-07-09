@@ -87,6 +87,9 @@ export default function FormularioVisitaScreen() {
   const [ultimaVisita, setUltimaVisita] = useState<VisitaDB | null>(null);
   
   const signatureRef = useRef<any>(null);
+  const formularioJaSalvo = !!ultimaVisita;
+  const textoAcaoFormulario = formularioJaSalvo ? 'Atualizar' : 'Salvar';
+  const textoBotaoPrincipal = abaAtiva === 'info' ? 'Próximo' : textoAcaoFormulario;
 
   // Carregar textos predefinidos
   useEffect(() => {
@@ -436,7 +439,7 @@ const visita =
 
 }
 
-  // Salvar visita
+  // Salvar ou atualizar o formulário único da empresa
   const handleSalvar = async () => {
     if (!validarFormulario()) return;
     
@@ -474,7 +477,9 @@ const visita =
       
       Alert.alert(
         'Sucesso',
-        'Visita registrada com sucesso!',
+        formularioJaSalvo
+          ? 'Formulário atualizado com sucesso!'
+          : 'Formulário salvo com sucesso!',
         [{ text: 'OK', onPress: () => navigation.navigate('Visitas') }]
       );
     } catch (error) {
@@ -714,12 +719,12 @@ const renderAssinaturaAba = () => (
         <Pressable onPress={() => navigation.navigate('Visitas' as never)} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Nova Visita</Text>
+        <Text style={styles.headerTitle}>Formulário de Visita</Text>
         <Pressable onPress={handleSalvar} style={styles.saveButton} disabled={loading}>
           {loading ? (
             <ActivityIndicator size="small" color="#2463EB" />
           ) : (
-            <Text style={styles.saveText}>{abaAtiva === 'info' ? 'Próximo' : 'Salvar'}</Text>
+            <Text style={styles.saveText}>{textoBotaoPrincipal}</Text>
           )}
         </Pressable>
       </View>
