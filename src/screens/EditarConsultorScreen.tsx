@@ -63,6 +63,13 @@ export default function EditarConsultorScreen() {
   const [email, setEmail] = useState(consultorContext?.email || '');
   const [whatsapp, setWhatsapp] = useState(consultorContext?.whatsapp || '');
   const [rota, setRota] = useState(consultorContext?.rota || '');
+  const consultorCadastrado = Boolean(
+    consultorContext?.nome?.trim() ||
+    consultorContext?.email?.trim() ||
+    consultorContext?.whatsapp?.trim() ||
+    consultorContext?.rota?.trim() ||
+    consultorContext?.foto
+  );
 
   // Estados de erro
   const [errors, setErrors] = useState({
@@ -444,13 +451,15 @@ const handleSelecionarFoto = async () => {
               </View>
 
               {/* Botão Excluir Cadastro */}
-              <TouchableOpacity 
-                style={styles.excluirButton} 
-                onPress={handleExcluirCadastro}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.excluirButtonText}>Excluir Cadastro</Text>
-              </TouchableOpacity>
+              {consultorCadastrado && (
+                <TouchableOpacity
+                  style={styles.excluirButton}
+                  onPress={handleExcluirCadastro}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.excluirButtonText}>Excluir Cadastro</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </ScrollView>
         </TouchableWithoutFeedback>

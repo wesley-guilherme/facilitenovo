@@ -44,6 +44,10 @@ import { db } from '../database/initDatabase'
 import { VisitasRepository, VisitaDB } from '../database/VisitasRepository';
 import DateTimePicker, { DateTimePickerEvent, DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import SignatureScreen from 'react-native-signature-canvas';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import { captureRef } from 'react-native-view-shot';
 
 const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -89,8 +93,11 @@ export default function FormularioVisitaScreen() {
   const [loading, setLoading] = useState(false);
   const [ultimaVisita, setUltimaVisita] = useState<VisitaDB | null>(null);
   const [showFormularioFinal, setShowFormularioFinal] = useState(false);
+  const [compartilhandoPdf, setCompartilhandoPdf] = useState(false);
+  const [compartilhandoPng, setCompartilhandoPng] = useState(false);
   
   const signatureRef = useRef<any>(null);
+  const formularioDocumentoRef = useRef<View>(null);
   const formularioJaSalvo = !!ultimaVisita;
   const textoAcaoFormulario = formularioJaSalvo ? 'Atualizar' : 'Salvar';
   const textoBotaoPrincipal = abaAtiva === 'info' ? 'Próximo' : textoAcaoFormulario;
@@ -114,6 +121,17 @@ export default function FormularioVisitaScreen() {
     const dia = String(data.getDate()).padStart(2, '0');
 
     return `${ano}-${mes}-${dia}`;
+  };
+
+  const obterDataVisitaBanco = () => {
+    const partes = dataVisita.split('/').map(Number);
+
+    if (partes.length === 3 && partes.every(Boolean)) {
+      const [dia, mes, ano] = partes;
+      return formatarDataBanco(new Date(ano, mes - 1, dia));
+    }
+
+    return formatarDataBanco(dataSelecionada);
   };
 
   const carregarTextosPredefinidos = async () => {
@@ -468,7 +486,7 @@ const visita =
         consultor_id: consultor?.id || null,
         protocolo_atendimento: protocoloAtendimento.trim() || null,
         solicitante: solicitante.trim(),
-        data_visita: formatarDataBanco(dataSelecionada),
+        data_visita: obterDataVisitaBanco(),
         hora_inicio: horaInicio,
         hora_termino: horaTermino,
         descricao: descricao.trim(),
@@ -510,6 +528,268 @@ const visita =
   const handleCompartilhar = async () => {
     // TODO: Implementar geração de PDF/Imagem
     Alert.alert('Em breve', 'Funcionalidade de compartilhamento em desenvolvimento');
+  };
+
+  const escaparHtml = (valor?: string | null) =>
+    String(valor || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\n/g, '<br />');
+
+  const normalizarNomeArquivo = (valor?: string | null) => {
+    const normalizado = String(valor || 'empresa')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase();
+
+    return normalizado || 'empresa';
+  };
+
+  const obterDataParaNomeArquivo = () => {
+    const partes = dataVisita.split('/');
+
+    if (partes.length === 3) {
+      const [dia, mes, ano] = partes;
+      return `${dia.padStart(2, '0')}${mes.padStart(2, '0')}${ano.slice(-2)}`;
+    }
+
+    return new Date()
+      .toLocaleDateString('pt-BR')
+      .replace(/\D/g, '')
+      .slice(0, 6);
+  };
+
+  const gerarNomeArquivoPdf = () =>
+    `${normalizarNomeArquivo(empresaSelecionada?.nome_fantasia)}${obterDataParaNomeArquivo()}.pdf`;
+
+  const gerarNomeArquivoPng = () =>
+    `${normalizarNomeArquivo(empresaSelecionada?.nome_fantasia)}${obterDataParaNomeArquivo()}.png`;
+
+  const enderecoConsultor = () => {
+    const ruaNumero = [empresaConsultor.endereco, empresaConsultor.numero]
+      .filter(Boolean)
+      .join(', ');
+    const cidadeEstado = [empresaConsultor.cidade, empresaConsultor.estado]
+      .filter(Boolean)
+      .join('/');
+
+    return [ruaNumero || 'Endereco nao informado', cidadeEstado]
+      .filter(Boolean)
+      .join(' - ');
+  };
+
+  const gerarLogoHtml = (marcaDagua = false) => {
+    const logo = marcaDagua ? empresaConsultor.logoMedia : empresaConsultor.logoPequena;
+
+    if (logo) {
+      return `<img src="${escaparHtml(logo)}" class="${marcaDagua ? 'watermark-img' : 'header-logo-img'}" />`;
+    }
+
+    return `
+      <div class="${marcaDagua ? 'test-watermark' : 'test-logo'}">
+        <div class="${marcaDagua ? 'test-watermark-icon' : 'test-logo-icon'}">+</div>
+        <div>
+          <div class="${marcaDagua ? 'test-watermark-name' : 'test-logo-name'}">FACILITE</div>
+          <div class="${marcaDagua ? 'test-watermark-sub' : 'test-logo-sub'}">CONSULTORIA</div>
+        </div>
+      </div>
+    `;
+  };
+
+  const gerarAssinaturaHtml = () => {
+    if (assinatura && !assinatura.startsWith('data:image/svg')) {
+      return `<img src="${escaparHtml(assinatura)}" class="signature-img" />`;
+    }
+
+    return '<div class="signature-fallback">Assinatura confirmada</div>';
+  };
+
+  const gerarHtmlFormularioPdf = () => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          @page { margin: 24px; size: A4; }
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; }
+          .document { width: 100%; border: 1px solid #D7DEEA; border-radius: 8px; overflow: hidden; padding: 0 22px 22px; }
+          .top-bar { height: 10px; margin: 0 -22px 20px; background: #1769AA; }
+          .header { display: flex; min-height: 134px; gap: 20px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #E4E8F0; }
+          .brand { width: 190px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px 0; }
+          .logo-box { width: 160px; height: 58px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+          .header-logo-img { max-width: 160px; max-height: 58px; object-fit: contain; }
+          .test-logo { width: 160px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+          .test-logo-icon { width: 32px; height: 32px; border-radius: 16px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; }
+          .test-logo-name { color: #1769AA; font-size: 21px; line-height: 23px; font-weight: 800; }
+          .test-logo-sub { color: #6B7280; font-size: 9px; line-height: 11px; font-weight: 800; letter-spacing: 2px; }
+          .contact { min-height: 50px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; color: #4B5563; font-size: 12px; line-height: 17px; text-align: center; }
+          .company { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; text-align: center; }
+          .company-name { max-width: 310px; font-size: 24px; line-height: 30px; font-weight: 800; margin-bottom: 10px; }
+          .company-address { color: #4B5563; font-size: 14px; line-height: 19px; }
+          .protocol { background: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+          .protocol-label { color: #1769AA; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
+          .protocol-value { font-size: 20px; font-weight: 800; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+          .label { color: #6B7280; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
+          .value { min-height: 36px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 8px 10px; background: #FAFBFD; font-size: 14px; }
+          .section { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+          .rule { flex: 1; height: 1px; background: #DDE3EE; }
+          .section-title { font-size: 15px; font-weight: 800; }
+          .description { position: relative; min-height: 250px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 18px; margin-bottom: 18px; overflow: hidden; }
+          .description-text { position: relative; z-index: 1; font-size: 14px; line-height: 22px; color: #1F2937; }
+          .watermark-img { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 320px; height: 120px; object-fit: contain; opacity: 0.07; }
+          .test-watermark { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 330px; height: 78px; display: flex; align-items: center; justify-content: center; gap: 12px; opacity: 0.07; overflow: hidden; }
+          .test-watermark-icon { width: 58px; height: 58px; border-radius: 29px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; }
+          .test-watermark-name { color: #1769AA; font-size: 54px; line-height: 58px; font-weight: 800; }
+          .test-watermark-sub { color: #6B7280; font-size: 16px; line-height: 19px; font-weight: 800; letter-spacing: 4px; }
+          .message { min-height: 66px; display: flex; align-items: center; justify-content: center; background: #1769AA; color: white; border-radius: 8px; padding: 14px 16px; margin-bottom: 22px; text-align: center; font-size: 13px; line-height: 19px; font-weight: 600; }
+          .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 16px 16px 14px; background: #FAFBFD; text-align: center; }
+          .signature-img { width: 70%; height: 82px; object-fit: contain; }
+          .signature-fallback { font-size: 23px; color: #111827; font-style: italic; margin-bottom: 16px; }
+          .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 8px; }
+          .signature-label { font-size: 14px; font-weight: 800; }
+        </style>
+      </head>
+      <body>
+        <main class="document">
+          <div class="top-bar"></div>
+          <section class="header">
+            <div class="brand">
+              <div class="logo-box">${gerarLogoHtml(false)}</div>
+              <div class="contact">
+                ${empresaConsultor.telefone ? `<div>Tel: ${escaparHtml(empresaConsultor.telefone)}</div>` : ''}
+                ${empresaConsultor.celular ? `<div>Cel: ${escaparHtml(empresaConsultor.celular)}</div>` : ''}
+                ${empresaConsultor.email ? `<div>${escaparHtml(empresaConsultor.email)}</div>` : ''}
+              </div>
+            </div>
+            <div class="company">
+              <div class="company-name">${escaparHtml(empresaConsultor.nome || 'Empresa do Consultor')}</div>
+              <div class="company-address">${escaparHtml(enderecoConsultor())}</div>
+            </div>
+          </section>
+          <section class="protocol">
+            <div class="protocol-label">EMPRESA ATENDIDA</div>
+            <div class="protocol-value">${escaparHtml(empresaSelecionada?.nome_fantasia || 'Nao informada')}</div>
+          </section>
+          <section class="grid">
+            <div><div class="label">Consultor</div><div class="value">${escaparHtml(consultor?.nome || 'Nao informado')}</div></div>
+            <div><div class="label">Data da visita</div><div class="value">${escaparHtml(dataVisita)}</div></div>
+            <div><div class="label">Protocolo de atendimento</div><div class="value">${escaparHtml(protocoloAtendimento.trim() || 'Nao informado')}</div></div>
+            <div><div class="label">Solicitante</div><div class="value">${escaparHtml(solicitante || 'Nao informado')}</div></div>
+            <div><div class="label">Horario de inicio</div><div class="value">${escaparHtml(horaInicio || '--:--')}</div></div>
+            <div><div class="label">Horario de termino</div><div class="value">${escaparHtml(horaTermino || '--:--')}</div></div>
+          </section>
+          <section class="section">
+            <div class="rule"></div>
+            <div class="section-title">DESCRIÇÃO DO ATENDIMENTO</div>
+            <div class="rule"></div>
+          </section>
+          <section class="description">
+            ${gerarLogoHtml(true)}
+            <div class="description-text">${escaparHtml(descricao)}</div>
+          </section>
+          <section class="message">
+            ${escaparHtml(empresaConsultor.mensagemFormulario || 'O cliente declara que os procedimentos acima relacionados foram executados e concorda com as informacoes descritas neste formulario.')}
+          </section>
+          <section class="signature">
+            ${gerarAssinaturaHtml()}
+            <div class="signature-line"></div>
+            <div class="signature-label">Assinatura do Cliente</div>
+          </section>
+        </main>
+      </body>
+    </html>
+  `;
+
+  const compartilharPdf = async () => {
+    if (compartilhandoPdf) {
+      return;
+    }
+
+    try {
+      setCompartilhandoPdf(true);
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Erro', 'Compartilhamento nao disponivel neste dispositivo');
+        return;
+      }
+
+      const pdf = await Print.printToFileAsync({
+        html: gerarHtmlFormularioPdf(),
+        base64: false,
+      });
+
+      const nomeArquivo = gerarNomeArquivoPdf();
+      const destino = `${FileSystem.cacheDirectory}${nomeArquivo}`;
+
+      await FileSystem.copyAsync({
+        from: pdf.uri,
+        to: destino,
+      });
+
+      await Sharing.shareAsync(destino, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Compartilhar formulario em PDF',
+        UTI: 'com.adobe.pdf',
+      });
+    } catch (error) {
+      console.error('Erro ao compartilhar PDF:', error);
+      Alert.alert('Erro', 'Nao foi possivel gerar o PDF. Tente novamente.');
+    } finally {
+      setCompartilhandoPdf(false);
+    }
+  };
+
+  const compartilharPng = async () => {
+    if (compartilhandoPng) {
+      return;
+    }
+
+    try {
+      setCompartilhandoPng(true);
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Erro', 'Compartilhamento nao disponivel neste dispositivo');
+        return;
+      }
+
+      if (!formularioDocumentoRef.current) {
+        Alert.alert('Erro', 'Formulario ainda nao esta pronto para compartilhar');
+        return;
+      }
+
+      const capturaUri = await captureRef(formularioDocumentoRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+
+      const nomeArquivo = gerarNomeArquivoPng();
+      const destino = `${FileSystem.cacheDirectory}${nomeArquivo}`;
+
+      await FileSystem.copyAsync({
+        from: capturaUri,
+        to: destino,
+      });
+
+      await Sharing.shareAsync(destino, {
+        mimeType: 'image/png',
+        dialogTitle: 'Compartilhar formulario em PNG',
+        UTI: 'public.png',
+      });
+    } catch (error) {
+      console.error('Erro ao compartilhar PNG:', error);
+      Alert.alert('Erro', 'Nao foi possivel gerar o PNG. Tente novamente.');
+    } finally {
+      setCompartilhandoPng(false);
+    }
   };
 
   // Renderizar assinatura
@@ -601,10 +881,25 @@ const visita =
       />
 
       {/* Data da Visita */}
-      <CampoData
-        value={dataVisita}
-        onPress={selecionarData}
-      />
+      {Platform.OS === 'web' ? (
+        <View style={styles.field}>
+          <Text style={styles.label}>
+            Data da Visita
+            <Text style={styles.required}> *</Text>
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="DD/MM/AAAA"
+            value={dataVisita}
+            onChangeText={setDataVisita}
+          />
+        </View>
+      ) : (
+        <CampoData
+          value={dataVisita}
+          onPress={selecionarData}
+        />
+      )}
 
       {/* Hora Início e Hora Término */}
       {Platform.OS === 'web' ? (
@@ -849,12 +1144,38 @@ const renderAssinaturaAba = () => (
             <Text style={styles.documentModalTitle}>
               Formulario Assinado
             </Text>
-            <Pressable
-              style={styles.documentCloseButton}
-              onPress={fecharFormularioFinal}
-            >
-              <Text style={styles.documentCloseButtonText}>Fechar</Text>
-            </Pressable>
+            <View style={styles.documentModalActions}>
+              <Pressable
+                style={[
+                  styles.documentShareButton,
+                  compartilhandoPdf && styles.documentButtonDisabled,
+                ]}
+                onPress={compartilharPdf}
+                disabled={compartilhandoPdf}
+              >
+                <Text style={styles.documentShareButtonText}>
+                  {compartilhandoPdf ? 'Gerando...' : '↪ PDF'}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.documentShareButton,
+                  compartilhandoPng && styles.documentButtonDisabled,
+                ]}
+                onPress={compartilharPng}
+                disabled={compartilhandoPng}
+              >
+                <Text style={styles.documentShareButtonText}>
+                  {compartilhandoPng ? 'Gerando...' : '↪ PNG'}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.documentCloseButton}
+                onPress={fecharFormularioFinal}
+              >
+                <Text style={styles.documentCloseButtonText}>Fechar</Text>
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -862,19 +1183,50 @@ const renderAssinaturaAba = () => (
             contentContainerStyle={styles.documentScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.osDocument}>
-              <View style={styles.osBlueStrip} />
+            <View
+              ref={formularioDocumentoRef}
+              collapsable={false}
+              style={styles.osDocument}
+            >
+              <View style={styles.osTopBar} />
 
               <View style={styles.osHeader}>
-                <View style={styles.osLogoBox}>
-                  {empresaConsultor.logoPequena ? (
-                    <Image
-                      source={{ uri: empresaConsultor.logoPequena }}
-                      style={styles.osLogoSmall}
-                    />
-                  ) : (
-                    <Text style={styles.osLogoFallback}>FACILITE</Text>
-                  )}
+                <View style={styles.osBrandColumn}>
+                  <View style={styles.osLogoBox}>
+                    {empresaConsultor.logoPequena ? (
+                      <Image
+                        source={{ uri: empresaConsultor.logoPequena }}
+                        style={styles.osLogoSmall}
+                      />
+                    ) : (
+                      <View style={styles.osTestLogo}>
+                        <View style={styles.osTestLogoIcon}>
+                          <Text style={styles.osTestLogoIconText}>+</Text>
+                        </View>
+                        <View>
+                          <Text style={styles.osTestLogoName}>FACILITE</Text>
+                          <Text style={styles.osTestLogoSub}>CONSULTORIA</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.osContactBox}>
+                    {!!empresaConsultor.telefone && (
+                      <Text style={styles.osContactText}>
+                        Tel: {empresaConsultor.telefone}
+                      </Text>
+                    )}
+                    {!!empresaConsultor.celular && (
+                      <Text style={styles.osContactText}>
+                        Cel: {empresaConsultor.celular}
+                      </Text>
+                    )}
+                    {!!empresaConsultor.email && (
+                      <Text style={styles.osContactText}>
+                        {empresaConsultor.email}
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
                 <View style={styles.osCompanyHeader}>
@@ -884,63 +1236,59 @@ const renderAssinaturaAba = () => (
                   <Text style={styles.osCompanyAddress}>
                     {[empresaConsultor.endereco, empresaConsultor.numero]
                       .filter(Boolean)
-                      .join(', ')}
+                      .join(', ') || 'Endereco nao informado'}
                     {empresaConsultor.cidade || empresaConsultor.estado
                       ? ` - ${empresaConsultor.cidade}/${empresaConsultor.estado}`
                       : ''}
                   </Text>
-                  <Text style={styles.osCompanyContact}>
-                    {empresaConsultor.telefone ? `Telefone: ${empresaConsultor.telefone}` : ''}
-                    {empresaConsultor.telefone && empresaConsultor.celular ? '  |  ' : ''}
-                    {empresaConsultor.celular ? `Celular: ${empresaConsultor.celular}` : ''}
-                  </Text>
-                  {!!empresaConsultor.email && (
-                    <Text style={styles.osCompanyContact}>
-                      E-mail: {empresaConsultor.email}
-                    </Text>
-                  )}
                 </View>
               </View>
 
-              <View style={styles.osLineGroup}>
-                <Text style={styles.osProtocolLabel}>
-                  PROTOCOLO DE ATENDIMENTO:
-                  <Text style={styles.osProtocolValue}>
-                    {' '}
+              <View style={styles.osProtocolCard}>
+                <Text style={styles.osProtocolCaption}>
+                  EMPRESA ATENDIDA
+                </Text>
+                <Text style={styles.osProtocolValue}>
+                  {empresaSelecionada?.nome_fantasia || 'Nao informada'}
+                </Text>
+              </View>
+
+              <View style={styles.osInfoGrid}>
+                <View style={styles.osInfoItem}>
+                  <Text style={styles.osInfoLabel}>Consultor</Text>
+                  <Text style={styles.osInfoValue}>{consultor?.nome || 'Nao informado'}</Text>
+                </View>
+                <View style={styles.osInfoItem}>
+                  <Text style={styles.osInfoLabel}>Data da visita</Text>
+                  <Text style={styles.osInfoValue}>{dataVisita}</Text>
+                </View>
+                <View style={styles.osInfoItem}>
+                  <Text style={styles.osInfoLabel}>Protocolo de atendimento</Text>
+                  <Text style={styles.osInfoValue}>
                     {protocoloAtendimento.trim() || 'Nao informado'}
                   </Text>
-                </Text>
-
-                <View style={styles.osRow}>
-                  <Text style={styles.osFieldText}>
-                    Consultor: {consultor?.nome || 'Nao informado'}
-                  </Text>
-                  <Text style={styles.osFieldText}>
-                    Data: {dataVisita}
-                  </Text>
                 </View>
-
-                <Text style={styles.osFieldText}>
-                  Empresa: {empresaSelecionada?.nome_fantasia || 'Nao informada'}
-                </Text>
-
-                <Text style={styles.osFieldText}>
-                  Solicitante: {solicitante || 'Nao informado'}
-                </Text>
-
-                <View style={styles.osRow}>
-                  <Text style={styles.osFieldText}>
-                    Hora de Inicio: {horaInicio || '--:--'}
-                  </Text>
-                  <Text style={styles.osFieldText}>
-                    Hora de Termino: {horaTermino || '--:--'}
-                  </Text>
+                <View style={styles.osInfoItem}>
+                  <Text style={styles.osInfoLabel}>Solicitante</Text>
+                  <Text style={styles.osInfoValue}>{solicitante || 'Nao informado'}</Text>
+                </View>
+                <View style={styles.osInfoItem}>
+                  <Text style={styles.osInfoLabel}>Horario de inicio</Text>
+                  <Text style={styles.osInfoValue}>{horaInicio || '--:--'}</Text>
+                </View>
+                <View style={styles.osInfoItem}>
+                  <Text style={styles.osInfoLabel}>Horario de termino</Text>
+                  <Text style={styles.osInfoValue}>{horaTermino || '--:--'}</Text>
                 </View>
               </View>
 
-              <Text style={styles.osSectionTitle}>
-                DESCRICAO DO ATENDIMENTO
-              </Text>
+              <View style={styles.osSectionHeader}>
+                <View style={styles.osSectionRule} />
+                <Text style={styles.osSectionTitle}>
+                  DESCRIÇÃO DO ATENDIMENTO
+                </Text>
+                <View style={styles.osSectionRule} />
+              </View>
 
               <View style={styles.osDescriptionBox}>
                 {empresaConsultor.logoMedia ? (
@@ -949,7 +1297,15 @@ const renderAssinaturaAba = () => (
                     style={styles.osWatermark}
                   />
                 ) : (
-                  <Text style={styles.osWatermarkText}>FACILITE</Text>
+                  <View style={styles.osTestWatermark}>
+                    <View style={styles.osTestWatermarkIcon}>
+                      <Text style={styles.osTestWatermarkIconText}>+</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.osTestWatermarkName}>FACILITE</Text>
+                      <Text style={styles.osTestWatermarkSub}>CONSULTORIA</Text>
+                    </View>
+                  </View>
                 )}
                 <Text style={styles.osDescriptionText}>
                   {descricao}
@@ -964,20 +1320,22 @@ const renderAssinaturaAba = () => (
               </View>
 
               <View style={styles.osSignatureArea}>
-                {assinatura && Platform.OS === 'web' && assinatura.startsWith('data:image/svg') ? (
-                  <Text style={styles.osSignatureFallbackText}>
-                    Assinatura confirmada
+                <View style={styles.osSignatureBox}>
+                  {assinatura && Platform.OS === 'web' && assinatura.startsWith('data:image/svg') ? (
+                    <Text style={styles.osSignatureFallbackText}>
+                      Assinatura confirmada
+                    </Text>
+                  ) : assinatura ? (
+                    <Image
+                      source={{ uri: assinatura }}
+                      style={styles.osSignatureImage}
+                    />
+                  ) : null}
+                  <View style={styles.osSignatureLine} />
+                  <Text style={styles.osSignatureLabel}>
+                    Assinatura do Cliente
                   </Text>
-                ) : assinatura ? (
-                  <Image
-                    source={{ uri: assinatura }}
-                    style={styles.osSignatureImage}
-                  />
-                ) : null}
-                <View style={styles.osSignatureLine} />
-                <Text style={styles.osSignatureLabel}>
-                  Assinatura do Cliente
-                </Text>
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -1404,6 +1762,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
   },
+  documentModalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  documentShareButton: {
+    minWidth: 62,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#1769AA',
+  },
+  documentShareButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  documentButtonDisabled: {
+    opacity: 0.7,
+  },
   documentCloseButton: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -1427,133 +1806,262 @@ const styles = StyleSheet.create({
     maxWidth: 760,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#C9D3E3',
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    borderColor: '#D7DEEA',
+    borderRadius: 8,
+    paddingHorizontal: 22,
+    paddingBottom: 22,
     overflow: 'hidden',
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 3,
   },
-  osBlueStrip: {
-    height: 24,
-    marginHorizontal: -24,
-    marginBottom: 18,
-    backgroundColor: '#1389C9',
+  osTopBar: {
+    height: 10,
+    marginHorizontal: -22,
+    marginBottom: 20,
+    backgroundColor: '#1769AA',
   },
   osHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    gap: 20,
+    minHeight: 134,
     marginBottom: 18,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E8F0',
+  },
+  osBrandColumn: {
+    width: 190,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
   },
   osLogoBox: {
-    width: 150,
-    minHeight: 70,
+    width: 160,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    overflow: 'hidden',
   },
   osLogoSmall: {
-    width: 140,
-    height: 62,
+    width: '100%',
+    height: '100%',
     resizeMode: 'contain',
   },
-  osLogoFallback: {
-    fontSize: 18,
+  osTestLogo: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  osTestLogoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1769AA',
+  },
+  osTestLogoIconText: {
+    color: '#FFFFFF',
+    fontSize: 22,
     fontWeight: '800',
-    color: '#1389C9',
+    lineHeight: 26,
+  },
+  osTestLogoName: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#1769AA',
+    lineHeight: 23,
+  },
+  osTestLogoSub: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6B7280',
+    letterSpacing: 2,
+    lineHeight: 11,
+  },
+  osContactBox: {
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  osContactText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#4B5563',
+    textAlign: 'center',
   },
   osCompanyHeader: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   osCompanyName: {
-    fontSize: 21,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: '800',
-    color: '#111111',
-    marginBottom: 4,
+    color: '#111827',
+    marginBottom: 10,
+    textAlign: 'center',
+    maxWidth: 310,
   },
   osCompanyAddress: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#222222',
-    marginBottom: 6,
+    color: '#4B5563',
+    lineHeight: 19,
+    textAlign: 'center',
   },
-  osCompanyContact: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#222222',
-    marginBottom: 2,
+  osProtocolCard: {
+    backgroundColor: '#EEF6FD',
+    borderLeftWidth: 5,
+    borderLeftColor: '#1769AA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
   },
-  osLineGroup: {
-    gap: 10,
-    marginBottom: 18,
-  },
-  osProtocolLabel: {
-    fontSize: 18,
+  osProtocolCaption: {
+    fontSize: 11,
     fontWeight: '800',
-    color: '#111111',
-    borderBottomWidth: 1,
-    borderBottomColor: '#222222',
-    paddingBottom: 4,
+    color: '#1769AA',
+    marginBottom: 4,
   },
   osProtocolValue: {
-    fontWeight: '600',
-  },
-  osRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  osFieldText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#222222',
-    borderBottomWidth: 1,
-    borderBottomColor: '#222222',
-    paddingBottom: 3,
-  },
-  osSectionTitle: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#111111',
-    textAlign: 'center',
+    color: '#111827',
+  },
+  osInfoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+    marginBottom: 18,
+  },
+  osInfoItem: {
+    width: '50%',
+    paddingHorizontal: 6,
     marginBottom: 12,
   },
-  osDescriptionBox: {
-    minHeight: 280,
+  osInfoLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  osInfoValue: {
+    minHeight: 36,
     borderWidth: 1,
-    borderColor: '#111111',
-    padding: 16,
+    borderColor: '#DDE3EE',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#FAFBFD',
+  },
+  osSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  osSectionRule: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#DDE3EE',
+  },
+  osSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  osDescriptionBox: {
+    minHeight: 250,
+    alignSelf: 'stretch',
+    borderWidth: 1,
+    borderColor: '#DDE3EE',
+    borderRadius: 8,
+    padding: 18,
     marginBottom: 18,
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   osWatermark: {
     position: 'absolute',
     alignSelf: 'center',
     top: 70,
-    width: 230,
-    height: 150,
-    opacity: 0.1,
+    width: 320,
+    height: 120,
+    opacity: 0.07,
     resizeMode: 'contain',
   },
-  osWatermarkText: {
+  osTestWatermark: {
     position: 'absolute',
     alignSelf: 'center',
-    top: 120,
-    fontSize: 44,
+    top: 96,
+    width: 330,
+    height: 78,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    opacity: 0.07,
+    overflow: 'hidden',
+  },
+  osTestWatermarkIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1769AA',
+  },
+  osTestWatermarkIconText: {
+    color: '#FFFFFF',
+    fontSize: 40,
     fontWeight: '800',
-    color: '#1389C9',
-    opacity: 0.1,
+    lineHeight: 44,
+  },
+  osTestWatermarkName: {
+    fontSize: 54,
+    fontWeight: '800',
+    color: '#1769AA',
+    lineHeight: 58,
+  },
+  osTestWatermarkSub: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#6B7280',
+    letterSpacing: 4,
+    lineHeight: 19,
   },
   osDescriptionText: {
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 22,
-    color: '#111111',
+    color: '#1F2937',
+    flexShrink: 1,
+    zIndex: 1,
   },
   osMessageBox: {
-    backgroundColor: '#1389C9',
-    borderRadius: 10,
+    minHeight: 66,
+    alignSelf: 'stretch',
+    backgroundColor: '#1769AA',
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginBottom: 28,
+    marginBottom: 22,
+    justifyContent: 'center',
   },
   osMessageText: {
     color: '#FFFFFF',
@@ -1561,32 +2069,44 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '600',
     textAlign: 'center',
+    flexShrink: 1,
   },
   osSignatureArea: {
-    alignItems: 'center',
     marginTop: 4,
+    alignItems: 'center',
+  },
+  osSignatureBox: {
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E4E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    backgroundColor: '#FAFBFD',
   },
   osSignatureImage: {
-    width: '80%',
-    height: 90,
+    width: '70%',
+    height: 82,
     resizeMode: 'contain',
-    marginBottom: -6,
+    marginBottom: -2,
   },
   osSignatureFallbackText: {
-    fontSize: 24,
-    color: '#1A1A1A',
+    fontSize: 23,
+    color: '#111827',
     fontStyle: 'italic',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   osSignatureLine: {
-    width: '92%',
+    width: '76%',
     borderBottomWidth: 1,
-    borderBottomColor: '#111111',
+    borderBottomColor: '#111827',
     marginBottom: 8,
   },
   osSignatureLabel: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#111111',
+    color: '#111827',
   },
 });

@@ -33,7 +33,11 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { captureRef } from 'react-native-view-shot';
+import JSZip from 'jszip';
 import { db } from '../database/initDatabase';
 
 const { width, height } = Dimensions.get('window');
@@ -83,12 +87,43 @@ type Empresa = {
 type Visita = {
   id: string;
   empresa_id: string;
+  consultor_id?: string | null;
+  protocolo_atendimento?: string | null;
   data_visita: string;
+  solicitante?: string;
   hora_inicio: string;
   hora_termino: string;
   descricao: string;
+  status?: string;
   assinatura: string | null;
   created_at: string;
+};
+
+type EmpresaConsultorLote = {
+  logo_pequena?: string | null;
+  logo_media?: string | null;
+  nome?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  celular?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  mensagem_formulario?: string | null;
+};
+
+type ConsultorLote = {
+  nome?: string | null;
+};
+
+type FormatoLote = 'pdf' | 'png';
+
+type FormularioLote = {
+  visita: Visita;
+  empresa: Empresa;
+  empresaConsultor: EmpresaConsultorLote;
+  consultor: ConsultorLote | null;
 };
 
 // Tipo para Empresa com dados agregados da última visita
@@ -107,6 +142,10 @@ export default function VisitasScreen() {
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
   const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
   const [modalDataVisible, setModalDataVisible] = useState(false);
+  const [modalFormatoVisible, setModalFormatoVisible] = useState(false);
+  const [dataSelecionadaLote, setDataSelecionadaLote] = useState<string | null>(null);
+  const [formularioCaptura, setFormularioCaptura] = useState<FormularioLote | null>(null);
+  const formularioCapturaRef = React.useRef<View>(null);
 
   // Carregar configurações e dados
   useFocusEffect(
@@ -251,6 +290,209 @@ const carregarDados = async () => {
     return grupos;
   };
 
+  const normalizarNomeArquivo = (valor?: string | null) => {
+    const normalizado = String(valor || 'empresa')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase();
+
+    return normalizado || 'empresa';
+  };
+
+  const dataArquivo = (data: string) => {
+    const partes = data.split('-');
+
+    if (partes.length === 3) {
+      const [ano, mes, dia] = partes;
+      return `${dia}${mes}${ano.slice(-2)}`;
+    }
+
+    return formatarDataBR(data).replace(/\D/g, '').slice(0, 6);
+  };
+
+  const escaparHtml = (valor?: string | null) =>
+    String(valor || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\n/g, '<br />');
+
+  const nomeFormularioLote = (
+    empresa: Empresa,
+    data: string,
+    formato: FormatoLote
+  ) => `${normalizarNomeArquivo(empresa.nome_fantasia)}${dataArquivo(data)}.${formato}`;
+
+  const nomeZipLote = (data: string) => `${dataArquivo(data)}envio.zip`;
+
+  const enderecoConsultorLote = (empresaConsultor: EmpresaConsultorLote) => {
+    const ruaNumero = [empresaConsultor.endereco, empresaConsultor.numero]
+      .filter(Boolean)
+      .join(', ');
+    const cidadeEstado = [empresaConsultor.cidade, empresaConsultor.estado]
+      .filter(Boolean)
+      .join('/');
+
+    return [ruaNumero || 'Endereco nao informado', cidadeEstado]
+      .filter(Boolean)
+      .join(' - ');
+  };
+
+  const gerarHtmlFormularioLote = ({
+    visita,
+    empresa,
+    empresaConsultor,
+    consultor,
+  }: FormularioLote) => {
+    const logoPequena = empresaConsultor.logo_pequena
+      ? `<img src="${escaparHtml(empresaConsultor.logo_pequena)}" class="header-logo-img" />`
+      : '<div class="test-logo"><div class="test-logo-icon">+</div><div><div class="test-logo-name">FACILITE</div><div class="test-logo-sub">CONSULTORIA</div></div></div>';
+    const marcaDagua = empresaConsultor.logo_media
+      ? `<img src="${escaparHtml(empresaConsultor.logo_media)}" class="watermark-img" />`
+      : '<div class="test-watermark"><div class="test-watermark-icon">+</div><div><div class="test-watermark-name">FACILITE</div><div class="test-watermark-sub">CONSULTORIA</div></div></div>';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            @page { margin: 24px; size: A4; }
+            * { box-sizing: border-box; }
+            body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; }
+            .document { width: 100%; border: 1px solid #D7DEEA; border-radius: 8px; overflow: hidden; padding: 0 22px 22px; }
+            .top-bar { height: 10px; margin: 0 -22px 20px; background: #1769AA; }
+            .header { display: flex; min-height: 134px; gap: 20px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #E4E8F0; }
+            .brand { width: 190px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px 0; }
+            .logo-box { width: 160px; height: 58px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+            .header-logo-img { max-width: 160px; max-height: 58px; object-fit: contain; }
+            .test-logo { width: 160px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+            .test-logo-icon { width: 32px; height: 32px; border-radius: 16px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; }
+            .test-logo-name { color: #1769AA; font-size: 21px; line-height: 23px; font-weight: 800; }
+            .test-logo-sub { color: #6B7280; font-size: 9px; line-height: 11px; font-weight: 800; letter-spacing: 2px; }
+            .contact { min-height: 50px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; color: #4B5563; font-size: 12px; line-height: 17px; text-align: center; }
+            .company { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; text-align: center; }
+            .company-name { max-width: 310px; font-size: 24px; line-height: 30px; font-weight: 800; margin-bottom: 10px; }
+            .company-address { color: #4B5563; font-size: 14px; line-height: 19px; }
+            .protocol { background: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+            .protocol-label { color: #1769AA; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
+            .protocol-value { font-size: 20px; font-weight: 800; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+            .label { color: #6B7280; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
+            .value { min-height: 36px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 8px 10px; background: #FAFBFD; font-size: 14px; }
+            .section { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+            .rule { flex: 1; height: 1px; background: #DDE3EE; }
+            .section-title { font-size: 15px; font-weight: 800; }
+            .description { position: relative; min-height: 250px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 18px; margin-bottom: 18px; overflow: hidden; }
+            .description-text { position: relative; z-index: 1; font-size: 14px; line-height: 22px; color: #1F2937; }
+            .watermark-img { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 320px; height: 120px; object-fit: contain; opacity: 0.07; }
+            .test-watermark { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 330px; height: 78px; display: flex; align-items: center; justify-content: center; gap: 12px; opacity: 0.07; overflow: hidden; }
+            .test-watermark-icon { width: 58px; height: 58px; border-radius: 29px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; }
+            .test-watermark-name { color: #1769AA; font-size: 54px; line-height: 58px; font-weight: 800; }
+            .test-watermark-sub { color: #6B7280; font-size: 16px; line-height: 19px; font-weight: 800; letter-spacing: 4px; }
+            .message { min-height: 66px; display: flex; align-items: center; justify-content: center; background: #1769AA; color: white; border-radius: 8px; padding: 14px 16px; margin-bottom: 22px; text-align: center; font-size: 13px; line-height: 19px; font-weight: 600; }
+            .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 16px 16px 14px; background: #FAFBFD; text-align: center; }
+            .signature-img { width: 70%; height: 82px; object-fit: contain; }
+            .signature-fallback { font-size: 23px; color: #111827; font-style: italic; margin-bottom: 16px; }
+            .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 8px; }
+            .signature-label { font-size: 14px; font-weight: 800; }
+          </style>
+        </head>
+        <body>
+          <main class="document">
+            <div class="top-bar"></div>
+            <section class="header">
+              <div class="brand">
+                <div class="logo-box">${logoPequena}</div>
+                <div class="contact">
+                  ${empresaConsultor.telefone ? `<div>Tel: ${escaparHtml(empresaConsultor.telefone)}</div>` : ''}
+                  ${empresaConsultor.celular ? `<div>Cel: ${escaparHtml(empresaConsultor.celular)}</div>` : ''}
+                  ${empresaConsultor.email ? `<div>${escaparHtml(empresaConsultor.email)}</div>` : ''}
+                </div>
+              </div>
+              <div class="company">
+                <div class="company-name">${escaparHtml(empresaConsultor.nome || 'Empresa do Consultor')}</div>
+                <div class="company-address">${escaparHtml(enderecoConsultorLote(empresaConsultor))}</div>
+              </div>
+            </section>
+            <section class="protocol">
+              <div class="protocol-label">EMPRESA ATENDIDA</div>
+              <div class="protocol-value">${escaparHtml(empresa.nome_fantasia || 'Nao informada')}</div>
+            </section>
+            <section class="grid">
+              <div><div class="label">Consultor</div><div class="value">${escaparHtml(consultor?.nome || 'Nao informado')}</div></div>
+              <div><div class="label">Data da visita</div><div class="value">${escaparHtml(formatarDataBR(visita.data_visita))}</div></div>
+              <div><div class="label">Protocolo de atendimento</div><div class="value">${escaparHtml(visita.protocolo_atendimento || 'Nao informado')}</div></div>
+              <div><div class="label">Solicitante</div><div class="value">${escaparHtml(visita.solicitante || 'Nao informado')}</div></div>
+              <div><div class="label">Horario de inicio</div><div class="value">${escaparHtml(visita.hora_inicio || '--:--')}</div></div>
+              <div><div class="label">Horario de termino</div><div class="value">${escaparHtml(visita.hora_termino || '--:--')}</div></div>
+            </section>
+            <section class="section"><div class="rule"></div><div class="section-title">DESCRIÇÃO DO ATENDIMENTO</div><div class="rule"></div></section>
+            <section class="description">
+              ${marcaDagua}
+              <div class="description-text">${escaparHtml(visita.descricao)}</div>
+            </section>
+            <section class="message">
+              ${escaparHtml(empresaConsultor.mensagem_formulario || 'O cliente declara que os procedimentos acima relacionados foram executados e concorda com as informacoes descritas neste formulario.')}
+            </section>
+            <section class="signature">
+              ${
+                visita.assinatura && !visita.assinatura.startsWith('data:image/svg')
+                  ? `<img src="${escaparHtml(visita.assinatura)}" class="signature-img" />`
+                  : '<div class="signature-fallback">Assinatura confirmada</div>'
+              }
+              <div class="signature-line"></div>
+              <div class="signature-label">Assinatura do Cliente</div>
+            </section>
+          </main>
+        </body>
+      </html>
+    `;
+  };
+
+  const carregarDadosFormularioLote = async (data: string): Promise<FormularioLote[]> => {
+    const visitasData = await db.getAllAsync<Visita>(
+      `SELECT *
+       FROM visitas
+       WHERE data_visita = ?
+       AND status <> 'RASCUNHO'
+       ORDER BY hora_inicio ASC`,
+      [data]
+    );
+
+    const empresaConsultor =
+      await db.getFirstAsync<EmpresaConsultorLote>(
+        'SELECT * FROM empresa_consultor LIMIT 1'
+      ) || {};
+    const consultor =
+      await db.getFirstAsync<ConsultorLote>(
+        'SELECT nome FROM consultor LIMIT 1'
+      );
+
+    const formularios: FormularioLote[] = [];
+
+    for (const visita of visitasData) {
+      const empresa = await db.getFirstAsync<Empresa>(
+        'SELECT * FROM empresas WHERE id = ?',
+        [visita.empresa_id]
+      );
+
+      if (empresa) {
+        formularios.push({
+          visita,
+          empresa,
+          empresaConsultor,
+          consultor,
+        });
+      }
+    }
+
+    return formularios;
+  };
+
   // ==================== GERAR RELATÓRIO ====================
   const gerarRelatorioPorData = () => {
     if (datasDisponiveis.length === 0) {
@@ -263,27 +505,99 @@ const carregarDados = async () => {
 
   const handleSelecionarData = (data: string) => {
     setModalDataVisible(false);
-    gerarZipParaData(data);
+    setDataSelecionadaLote(data);
+    setModalFormatoVisible(true);
   };
 
   const handleFecharModal = () => {
     setModalDataVisible(false);
+    setModalFormatoVisible(false);
+    setDataSelecionadaLote(null);
   };
 
- const gerarZipParaData = async (data: string) => {
+  const handleSelecionarFormato = (formato: FormatoLote) => {
+    if (!dataSelecionadaLote) {
+      return;
+    }
+
+    setModalFormatoVisible(false);
+    gerarZipParaData(dataSelecionadaLote, formato);
+  };
+
+ const gerarZipParaData = async (data: string, formato: FormatoLote) => {
   setGerandoRelatorio(true);
   try {
-    // Buscar visitas da data selecionada
-    const visitasDataResult = await db.getAllAsync(
-      'SELECT * FROM visitas WHERE data_visita = ?',
-      [data]
-    );
-    const visitasData = visitasDataResult as Visita[];
+    const formularios = await carregarDadosFormularioLote(data);
     
-    if (visitasData.length === 0) {
+    if (formularios.length === 0) {
       Alert.alert('Aviso', 'Nenhuma visita encontrada para esta data');
       return;
     }
+
+    const visitasData = formularios.map(formulario => formulario.visita);
+
+    const zip = new JSZip();
+
+    for (const formulario of formularios) {
+      const nomeFormulario = nomeFormularioLote(
+        formulario.empresa,
+        data,
+        formato
+      );
+
+      if (formato === 'pdf') {
+        const pdf = await Print.printToFileAsync({
+          html: gerarHtmlFormularioLote(formulario),
+          base64: false,
+        });
+        const pdfBase64 = await FileSystem.readAsStringAsync(pdf.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        zip.file(nomeFormulario, pdfBase64, { base64: true });
+      } else {
+        setFormularioCaptura(formulario);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (!formularioCapturaRef.current) {
+          throw new Error('Formulario temporario nao renderizado para PNG');
+        }
+
+        const pngBase64 = await captureRef(formularioCapturaRef, {
+          format: 'png',
+          quality: 1,
+          result: 'base64',
+        });
+
+        zip.file(nomeFormulario, pngBase64, { base64: true });
+        setFormularioCaptura(null);
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+    }
+
+    const zipBase64 = await zip.generateAsync({
+      type: 'base64',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+
+    const lotePath = `${FileSystem.cacheDirectory}${nomeZipLote(data)}`;
+
+    await FileSystem.writeAsStringAsync(lotePath, zipBase64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const loteCompartilhavel = await Sharing.isAvailableAsync();
+    if (loteCompartilhavel) {
+      await Sharing.shareAsync(lotePath, {
+        mimeType: 'application/zip',
+        dialogTitle: `Enviar lote de visitas de ${formatarDataBR(data)}`,
+        UTI: 'public.zip-archive',
+      });
+    } else {
+      Alert.alert('Erro', 'Compartilhamento nao disponivel');
+    }
+
+    return;
     
     // Buscar empresas relacionadas
     let relatorioContent = `RELATÓRIO DE VISITAS - ${formatarDataBR(data)}\n`;
@@ -384,6 +698,126 @@ const carregarDados = async () => {
     );
   };
 
+  const renderFormularioCapturaPng = () => {
+    if (!formularioCaptura) {
+      return null;
+    }
+
+    const { visita, empresa, empresaConsultor, consultor } = formularioCaptura;
+
+    return (
+      <View style={styles.captureLayer} pointerEvents="none">
+        <View
+          ref={formularioCapturaRef}
+          collapsable={false}
+          style={styles.captureDocument}
+        >
+          <View style={styles.captureTopBar} />
+          <View style={styles.captureHeader}>
+            <View style={styles.captureBrand}>
+              <View style={styles.captureLogoBox}>
+                {empresaConsultor.logo_pequena ? (
+                  <Image
+                    source={{ uri: empresaConsultor.logo_pequena }}
+                    style={styles.captureLogoImage}
+                  />
+                ) : (
+                  <View style={styles.captureTestLogo}>
+                    <View style={styles.captureTestLogoIcon}>
+                      <Text style={styles.captureTestLogoIconText}>+</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.captureTestLogoName}>FACILITE</Text>
+                      <Text style={styles.captureTestLogoSub}>CONSULTORIA</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+              <View style={styles.captureContact}>
+                {!!empresaConsultor.telefone && (
+                  <Text style={styles.captureContactText}>Tel: {empresaConsultor.telefone}</Text>
+                )}
+                {!!empresaConsultor.celular && (
+                  <Text style={styles.captureContactText}>Cel: {empresaConsultor.celular}</Text>
+                )}
+                {!!empresaConsultor.email && (
+                  <Text style={styles.captureContactText}>{empresaConsultor.email}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.captureCompany}>
+              <Text style={styles.captureCompanyName}>
+                {empresaConsultor.nome || 'Empresa do Consultor'}
+              </Text>
+              <Text style={styles.captureCompanyAddress}>
+                {enderecoConsultorLote(empresaConsultor)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.captureProtocol}>
+            <Text style={styles.captureProtocolLabel}>EMPRESA ATENDIDA</Text>
+            <Text style={styles.captureProtocolValue}>{empresa.nome_fantasia}</Text>
+          </View>
+
+          <View style={styles.captureGrid}>
+            {[
+              ['Consultor', consultor?.nome || 'Nao informado'],
+              ['Data da visita', formatarDataBR(visita.data_visita)],
+              ['Protocolo de atendimento', visita.protocolo_atendimento || 'Nao informado'],
+              ['Solicitante', visita.solicitante || 'Nao informado'],
+              ['Horario de inicio', visita.hora_inicio || '--:--'],
+              ['Horario de termino', visita.hora_termino || '--:--'],
+            ].map(([label, value]) => (
+              <View key={label} style={styles.captureInfoItem}>
+                <Text style={styles.captureInfoLabel}>{label}</Text>
+                <Text style={styles.captureInfoValue}>{value}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.captureSectionHeader}>
+            <View style={styles.captureSectionRule} />
+            <Text style={styles.captureSectionTitle}>DESCRIÇÃO DO ATENDIMENTO</Text>
+            <View style={styles.captureSectionRule} />
+          </View>
+
+          <View style={styles.captureDescription}>
+            {empresaConsultor.logo_media ? (
+              <Image
+                source={{ uri: empresaConsultor.logo_media }}
+                style={styles.captureWatermark}
+              />
+            ) : (
+              <View style={styles.captureTestWatermark}>
+                <Text style={styles.captureTestWatermarkText}>FACILITE</Text>
+              </View>
+            )}
+            <Text style={styles.captureDescriptionText}>{visita.descricao}</Text>
+          </View>
+
+          <View style={styles.captureMessage}>
+            <Text style={styles.captureMessageText}>
+              {empresaConsultor.mensagem_formulario ||
+                'O cliente declara que os procedimentos acima relacionados foram executados e concorda com as informacoes descritas neste formulario.'}
+            </Text>
+          </View>
+
+          <View style={styles.captureSignature}>
+            {visita.assinatura && !visita.assinatura.startsWith('data:image/svg') ? (
+              <Image source={{ uri: visita.assinatura }} style={styles.captureSignatureImage} />
+            ) : (
+              <Text style={styles.captureSignatureFallback}>Assinatura confirmada</Text>
+            )}
+            <View style={styles.captureSignatureLine} />
+            <Text style={styles.captureSignatureLabel}>Assinatura do Cliente</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const grupos = agruparPorData();
 
   return (
@@ -420,8 +854,8 @@ const carregarDados = async () => {
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
           <>
-            <Text style={styles.relatorioButtonIcon}>📊</Text>
-            <Text style={styles.relatorioButtonText}>Gerar Relatório por Data</Text>
+            <Text style={styles.relatorioButtonIcon}>📦</Text>
+            <Text style={styles.relatorioButtonText}>Lote de Visitas por Data</Text>
           </>
         )}
       </TouchableOpacity>
@@ -502,6 +936,51 @@ const carregarDados = async () => {
           </View>
         </TouchableOpacity>
       </Modal>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalFormatoVisible}
+        onRequestClose={handleFecharModal}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleFecharModal}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Lote de Visitas</Text>
+            <Text style={styles.modalSubtitle}>
+              Escolha o formato dos formulários dentro do ZIP
+            </Text>
+
+            <TouchableOpacity
+              style={styles.modalItem}
+              onPress={() => handleSelecionarFormato('pdf')}
+            >
+              <Text style={styles.modalItemIcon}>↪</Text>
+              <Text style={styles.modalItemText}>PDF</Text>
+              <Text style={styles.modalItemArrow}>→</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalItem}
+              onPress={() => handleSelecionarFormato('png')}
+            >
+              <Text style={styles.modalItemIcon}>↪</Text>
+              <Text style={styles.modalItemText}>PNG</Text>
+              <Text style={styles.modalItemArrow}>→</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={handleFecharModal}
+            >
+              <Text style={styles.modalCancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      {renderFormularioCapturaPng()}
     </SafeAreaView>
   );
 }
@@ -809,5 +1288,274 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6C757D',
     fontWeight: '600',
+  },
+  captureLayer: {
+    position: 'absolute',
+    left: -10000,
+    top: 0,
+    width: 760,
+    backgroundColor: '#FFFFFF',
+  },
+  captureDocument: {
+    width: 760,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D7DEEA',
+    borderRadius: 8,
+    paddingHorizontal: 22,
+    paddingBottom: 22,
+    overflow: 'hidden',
+  },
+  captureTopBar: {
+    height: 10,
+    marginHorizontal: -22,
+    marginBottom: 20,
+    backgroundColor: '#1769AA',
+  },
+  captureHeader: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    gap: 20,
+    minHeight: 134,
+    marginBottom: 18,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E8F0',
+  },
+  captureBrand: {
+    width: 190,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  captureLogoBox: {
+    width: 160,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  captureLogoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  captureTestLogo: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  captureTestLogoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1769AA',
+  },
+  captureTestLogoIconText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  captureTestLogoName: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#1769AA',
+    lineHeight: 23,
+  },
+  captureTestLogoSub: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6B7280',
+    letterSpacing: 2,
+  },
+  captureContact: {
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  captureContactText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#4B5563',
+    textAlign: 'center',
+  },
+  captureCompany: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  captureCompanyName: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  captureCompanyAddress: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  captureProtocol: {
+    backgroundColor: '#EEF6FD',
+    borderLeftWidth: 5,
+    borderLeftColor: '#1769AA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  captureProtocolLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1769AA',
+    marginBottom: 4,
+  },
+  captureProtocolValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  captureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+    marginBottom: 18,
+  },
+  captureInfoItem: {
+    width: '50%',
+    paddingHorizontal: 6,
+    marginBottom: 12,
+  },
+  captureInfoLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  captureInfoValue: {
+    minHeight: 36,
+    borderWidth: 1,
+    borderColor: '#DDE3EE',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#FAFBFD',
+  },
+  captureSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  captureSectionRule: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#DDE3EE',
+  },
+  captureSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  captureDescription: {
+    minHeight: 250,
+    borderWidth: 1,
+    borderColor: '#DDE3EE',
+    borderRadius: 8,
+    padding: 18,
+    marginBottom: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  captureWatermark: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: 70,
+    width: 320,
+    height: 120,
+    opacity: 0.07,
+    resizeMode: 'contain',
+  },
+  captureTestWatermark: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: 100,
+    opacity: 0.07,
+  },
+  captureTestWatermarkText: {
+    fontSize: 54,
+    fontWeight: '800',
+    color: '#1769AA',
+  },
+  captureDescriptionText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#1F2937',
+    zIndex: 1,
+  },
+  captureMessage: {
+    minHeight: 66,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1769AA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 22,
+  },
+  captureMessageText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  captureSignature: {
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E4E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    backgroundColor: '#FAFBFD',
+  },
+  captureSignatureImage: {
+    width: '70%',
+    height: 82,
+    resizeMode: 'contain',
+  },
+  captureSignatureFallback: {
+    fontSize: 23,
+    color: '#111827',
+    fontStyle: 'italic',
+    marginBottom: 16,
+  },
+  captureSignatureLine: {
+    width: '76%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#111827',
+    marginBottom: 8,
+  },
+  captureSignatureLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
   },
 });

@@ -1,0 +1,82 @@
+
+> facilitenovo@1.0.0 web
+> expo start --web --port 8082 --host localhost
+
+Starting project at C:\facilitenovo
+Starting Metro Bundler
+Waiting on http://localhost:8082
+Logs for your project will appear below.
+Web .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.3% (857/907)
+Web Bundled 2918ms index.ts (1109 modules)
+ LOG  [web] Logs will appear in the browser console
+Web Bundled 341ms node_modules\expo-sqlite\web\worker.ts (16 modules)
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 74ms index.ts (1 module)
+Web Bundled 5ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 58ms index.ts (1 module)
+Web Bundled 10ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+› Detected a change in metro.config.js. Restart the server to see the new results.
+› Detected a change in babel.config.js. Restart the server to see the new results. You may need to clear the bundler cache with the --clear flag for your changes to take effect.
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 537ms index.ts (1 module)
+Web Bundled 6ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 72ms index.ts (1 module)
+Web Bundled 5ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 71ms index.ts (1 module)
+Web Bundled 5ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 53ms index.ts (1 module)
+Web Bundled 5ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 82ms index.ts (1 module)
+Web Bundled 6ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 77ms index.ts (1 module)
+Web Bundled 8ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 65ms index.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web Bundled 6ms node_modules\expo-sqlite\web\worker.ts (1 module)
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 2229ms index.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web Bundled 49ms node_modules\expo-sqlite\web\worker.ts (1 module)
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 103ms index.ts (1 module)
+Web Bundled 24ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 58ms index.ts (1 module)
+Web Bundled 5ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 71ms index.ts (1 module)
+Web Bundled 7ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 88ms index.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web Bundled 48ms node_modules\expo-sqlite\web\worker.ts (1 module)
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 372ms index.ts (1 module)
+Web Bundled 7ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 98ms index.ts (1 module)
+Web Bundled 12ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 63ms index.ts (1 module)
+Web Bundled 5ms node_modules\expo-sqlite\web\worker.ts (1 module)
+ LOG  [web] Logs will appear in the browser console
