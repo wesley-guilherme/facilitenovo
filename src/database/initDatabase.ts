@@ -235,6 +235,7 @@ export const initDatabase = async () => {
         id TEXT PRIMARY KEY,
         empresa_id TEXT NOT NULL,
         consultor_id TEXT,
+        protocolo_atendimento TEXT,
         solicitante TEXT NOT NULL,
         data_visita TEXT NOT NULL,
         hora_inicio TEXT NOT NULL,
@@ -266,6 +267,11 @@ export const initDatabase = async () => {
       coluna => coluna.name === 'consultor_id'
     );
 
+  const possuiProtocolo =
+    (tableInfo as any[]).some(
+      coluna => coluna.name === 'protocolo_atendimento'
+    );
+
   if (!possuiStatus) {
 
     await db.execAsync(`
@@ -288,6 +294,19 @@ export const initDatabase = async () => {
 
     console.log(
       'Coluna consultor_id adicionada em visitas'
+    );
+
+  }
+
+  if (!possuiProtocolo) {
+
+    await db.execAsync(`
+      ALTER TABLE visitas
+      ADD COLUMN protocolo_atendimento TEXT
+    `);
+
+    console.log(
+      'Coluna protocolo_atendimento adicionada em visitas'
     );
 
   }

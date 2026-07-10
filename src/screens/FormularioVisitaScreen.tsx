@@ -34,6 +34,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useConsultor } from '../contexts/ConsultorContext';
+import { useEmpresa } from '../contexts/EmpresaContext';
 import CampoSolicitante from '../components/FormularioVisita/CampoSolicitante';
 import CampoData from '../components/FormularioVisita/CampoData';
 import CampoHorario from '../components/FormularioVisita/CampoHorario';
@@ -62,6 +63,7 @@ export default function FormularioVisitaScreen() {
   const navigation = useNavigation<FormularioVisitaScreenNavigationProp>();
   const route = useRoute<any>();
   const { consultor } = useConsultor();
+  const { empresa: empresaConsultor } = useEmpresa();
 
   
   // Estados das abas
@@ -70,6 +72,7 @@ export default function FormularioVisitaScreen() {
   // Estados do formulário
   const [empresaId, setEmpresaId] = useState('');
   const [empresaSelecionada, setEmpresaSelecionada] = useState<EmpresaDB | null>(null);
+  const [protocoloAtendimento, setProtocoloAtendimento] = useState('');
   const [solicitante, setSolicitante] = useState('');
   const [dataVisita, setDataVisita] = useState(new Date().toLocaleDateString('pt-BR'));
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -85,6 +88,7 @@ export default function FormularioVisitaScreen() {
   const [showTextosModal, setShowTextosModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ultimaVisita, setUltimaVisita] = useState<VisitaDB | null>(null);
+  const [showFormularioFinal, setShowFormularioFinal] = useState(false);
   
   const signatureRef = useRef<any>(null);
   const formularioJaSalvo = !!ultimaVisita;
@@ -301,6 +305,7 @@ export default function FormularioVisitaScreen() {
 };
 
 const limparDadosDaVisita = () => {
+  setProtocoloAtendimento('');
   setSolicitante('');
   setHoraInicio('');
   setHoraTermino('');
@@ -323,6 +328,7 @@ const preencherComUltimaVisita = (visita: VisitaDB) => {
   const dataBanco = criarDataDeBanco(visita.data_visita);
 
   setSolicitante(visita.solicitante || '');
+  setProtocoloAtendimento(visita.protocolo_atendimento || '');
   setDataSelecionada(dataBanco);
   setDataVisita(dataBanco.toLocaleDateString('pt-BR'));
   setHoraInicio(visita.hora_inicio || '');
@@ -460,6 +466,7 @@ const visita =
         id: visitaId,
         empresa_id: empresaId,
         consultor_id: consultor?.id || null,
+        protocolo_atendimento: protocoloAtendimento.trim() || null,
         solicitante: solicitante.trim(),
         data_visita: formatarDataBanco(dataSelecionada),
         hora_inicio: horaInicio,
@@ -470,8 +477,9 @@ const visita =
         created_at: new Date().toISOString()
       });
 
+      setShowFormularioFinal(true);
+
       if (Platform.OS === 'web') {
-        navigation.navigate('Visitas');
         return;
       }
       
@@ -480,7 +488,7 @@ const visita =
         formularioJaSalvo
           ? 'Formulário atualizado com sucesso!'
           : 'Formulário salvo com sucesso!',
-        [{ text: 'OK', onPress: () => navigation.navigate('Visitas') }]
+        [{ text: 'OK', onPress: () => setShowFormularioFinal(true) }]
       );
     } catch (error) {
       console.error('Erro ao salvar visita:', error);
@@ -521,6 +529,11 @@ const visita =
     setAssinatura(
       `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
     );
+  };
+
+  const fecharFormularioFinal = () => {
+    setShowFormularioFinal(false);
+    navigation.navigate('Visitas');
   };
 
   const handleClearSignature = () => {
@@ -567,6 +580,19 @@ const visita =
           </Text>
         </View>
       )}
+
+      <View style={styles.field}>
+        <Text style={styles.label}>
+          Protocolo de Atendimento
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Numero do protocolo, se houver"
+          placeholderTextColor="#ADB5BD"
+          value={protocoloAtendimento}
+          onChangeText={setProtocoloAtendimento}
+        />
+      </View>
 
       {/* Solicitante */}
       <CampoSolicitante
@@ -811,6 +837,152 @@ const renderAssinaturaAba = () => (
           }
         />
       )}
+
+      <Modal
+        visible={showFormularioFinal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={fecharFormularioFinal}
+      >
+        <SafeAreaView style={styles.documentModalContainer}>
+          <View style={styles.documentModalHeader}>
+            <Text style={styles.documentModalTitle}>
+              Formulario Assinado
+            </Text>
+            <Pressable
+              style={styles.documentCloseButton}
+              onPress={fecharFormularioFinal}
+            >
+              <Text style={styles.documentCloseButtonText}>Fechar</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.documentScroll}
+            contentContainerStyle={styles.documentScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.osDocument}>
+              <View style={styles.osBlueStrip} />
+
+              <View style={styles.osHeader}>
+                <View style={styles.osLogoBox}>
+                  {empresaConsultor.logoPequena ? (
+                    <Image
+                      source={{ uri: empresaConsultor.logoPequena }}
+                      style={styles.osLogoSmall}
+                    />
+                  ) : (
+                    <Text style={styles.osLogoFallback}>FACILITE</Text>
+                  )}
+                </View>
+
+                <View style={styles.osCompanyHeader}>
+                  <Text style={styles.osCompanyName}>
+                    {empresaConsultor.nome || 'Empresa do Consultor'}
+                  </Text>
+                  <Text style={styles.osCompanyAddress}>
+                    {[empresaConsultor.endereco, empresaConsultor.numero]
+                      .filter(Boolean)
+                      .join(', ')}
+                    {empresaConsultor.cidade || empresaConsultor.estado
+                      ? ` - ${empresaConsultor.cidade}/${empresaConsultor.estado}`
+                      : ''}
+                  </Text>
+                  <Text style={styles.osCompanyContact}>
+                    {empresaConsultor.telefone ? `Telefone: ${empresaConsultor.telefone}` : ''}
+                    {empresaConsultor.telefone && empresaConsultor.celular ? '  |  ' : ''}
+                    {empresaConsultor.celular ? `Celular: ${empresaConsultor.celular}` : ''}
+                  </Text>
+                  {!!empresaConsultor.email && (
+                    <Text style={styles.osCompanyContact}>
+                      E-mail: {empresaConsultor.email}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.osLineGroup}>
+                <Text style={styles.osProtocolLabel}>
+                  PROTOCOLO DE ATENDIMENTO:
+                  <Text style={styles.osProtocolValue}>
+                    {' '}
+                    {protocoloAtendimento.trim() || 'Nao informado'}
+                  </Text>
+                </Text>
+
+                <View style={styles.osRow}>
+                  <Text style={styles.osFieldText}>
+                    Consultor: {consultor?.nome || 'Nao informado'}
+                  </Text>
+                  <Text style={styles.osFieldText}>
+                    Data: {dataVisita}
+                  </Text>
+                </View>
+
+                <Text style={styles.osFieldText}>
+                  Empresa: {empresaSelecionada?.nome_fantasia || 'Nao informada'}
+                </Text>
+
+                <Text style={styles.osFieldText}>
+                  Solicitante: {solicitante || 'Nao informado'}
+                </Text>
+
+                <View style={styles.osRow}>
+                  <Text style={styles.osFieldText}>
+                    Hora de Inicio: {horaInicio || '--:--'}
+                  </Text>
+                  <Text style={styles.osFieldText}>
+                    Hora de Termino: {horaTermino || '--:--'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.osSectionTitle}>
+                DESCRICAO DO ATENDIMENTO
+              </Text>
+
+              <View style={styles.osDescriptionBox}>
+                {empresaConsultor.logoMedia ? (
+                  <Image
+                    source={{ uri: empresaConsultor.logoMedia }}
+                    style={styles.osWatermark}
+                  />
+                ) : (
+                  <Text style={styles.osWatermarkText}>FACILITE</Text>
+                )}
+                <Text style={styles.osDescriptionText}>
+                  {descricao}
+                </Text>
+              </View>
+
+              <View style={styles.osMessageBox}>
+                <Text style={styles.osMessageText}>
+                  {empresaConsultor.mensagemFormulario ||
+                    'O cliente declara que os procedimentos acima relacionados foram executados e concorda com as informacoes descritas neste formulario.'}
+                </Text>
+              </View>
+
+              <View style={styles.osSignatureArea}>
+                {assinatura && Platform.OS === 'web' && assinatura.startsWith('data:image/svg') ? (
+                  <Text style={styles.osSignatureFallbackText}>
+                    Assinatura confirmada
+                  </Text>
+                ) : assinatura ? (
+                  <Image
+                    source={{ uri: assinatura }}
+                    style={styles.osSignatureImage}
+                  />
+                ) : null}
+                <View style={styles.osSignatureLine} />
+                <Text style={styles.osSignatureLabel}>
+                  Assinatura do Cliente
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1212,5 +1384,209 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#6C757D',
     paddingVertical: 20,
+  },
+  documentModalContainer: {
+    flex: 1,
+    backgroundColor: '#E9EEF7',
+  },
+  documentModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DDE3EE',
+  },
+  documentModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  documentCloseButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#2463EB',
+  },
+  documentCloseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  documentScroll: {
+    flex: 1,
+  },
+  documentScrollContent: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  osDocument: {
+    width: '100%',
+    maxWidth: 760,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#C9D3E3',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    overflow: 'hidden',
+  },
+  osBlueStrip: {
+    height: 24,
+    marginHorizontal: -24,
+    marginBottom: 18,
+    backgroundColor: '#1389C9',
+  },
+  osHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  osLogoBox: {
+    width: 150,
+    minHeight: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  osLogoSmall: {
+    width: 140,
+    height: 62,
+    resizeMode: 'contain',
+  },
+  osLogoFallback: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1389C9',
+  },
+  osCompanyHeader: {
+    flex: 1,
+  },
+  osCompanyName: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#111111',
+    marginBottom: 4,
+  },
+  osCompanyAddress: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#222222',
+    marginBottom: 6,
+  },
+  osCompanyContact: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#222222',
+    marginBottom: 2,
+  },
+  osLineGroup: {
+    gap: 10,
+    marginBottom: 18,
+  },
+  osProtocolLabel: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222222',
+    paddingBottom: 4,
+  },
+  osProtocolValue: {
+    fontWeight: '600',
+  },
+  osRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  osFieldText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#222222',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222222',
+    paddingBottom: 3,
+  },
+  osSectionTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#111111',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  osDescriptionBox: {
+    minHeight: 280,
+    borderWidth: 1,
+    borderColor: '#111111',
+    padding: 16,
+    marginBottom: 18,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  osWatermark: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: 70,
+    width: 230,
+    height: 150,
+    opacity: 0.1,
+    resizeMode: 'contain',
+  },
+  osWatermarkText: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: 120,
+    fontSize: 44,
+    fontWeight: '800',
+    color: '#1389C9',
+    opacity: 0.1,
+  },
+  osDescriptionText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#111111',
+  },
+  osMessageBox: {
+    backgroundColor: '#1389C9',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 28,
+  },
+  osMessageText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  osSignatureArea: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  osSignatureImage: {
+    width: '80%',
+    height: 90,
+    resizeMode: 'contain',
+    marginBottom: -6,
+  },
+  osSignatureFallbackText: {
+    fontSize: 24,
+    color: '#1A1A1A',
+    fontStyle: 'italic',
+    marginBottom: 18,
+  },
+  osSignatureLine: {
+    width: '92%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#111111',
+    marginBottom: 8,
+  },
+  osSignatureLabel: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111111',
   },
 });

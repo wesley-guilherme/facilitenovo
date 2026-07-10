@@ -4,6 +4,7 @@ export type VisitaDB = {
   id: string;
   empresa_id: string;
   consultor_id: string | null;
+  protocolo_atendimento: string | null;
   data_visita: string;
   solicitante: string;
   hora_inicio: string;
@@ -158,6 +159,7 @@ ultima_visita ASC`
       id: string;
       empresa_id: string;
       consultor_id?: string | null;
+      protocolo_atendimento?: string | null;
       solicitante: string;
       data_visita: string;
       hora_inicio: string;
@@ -178,6 +180,8 @@ ultima_visita ASC`
 
         consultor_id,
 
+        protocolo_atendimento,
+
         solicitante,
 
         data_visita,
@@ -196,11 +200,12 @@ ultima_visita ASC`
 
       )
 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         visita.id,
         visita.empresa_id,
         visita.consultor_id ?? null,
+        visita.protocolo_atendimento ?? null,
         visita.solicitante,
         visita.data_visita,
         visita.hora_inicio,
@@ -219,6 +224,7 @@ ultima_visita ASC`
       id: string;
       empresa_id: string;
       consultor_id?: string | null;
+      protocolo_atendimento?: string | null;
       solicitante: string;
       data_visita: string;
       hora_inicio: string;
@@ -246,6 +252,8 @@ ultima_visita ASC`
 
          consultor_id = ?,
 
+         protocolo_atendimento = ?,
+
          solicitante = ?,
 
          data_visita = ?,
@@ -265,6 +273,7 @@ ultima_visita ASC`
        WHERE id = ?`,
       [
         visita.consultor_id ?? null,
+        visita.protocolo_atendimento ?? null,
         visita.solicitante,
         visita.data_visita,
         visita.hora_inicio,

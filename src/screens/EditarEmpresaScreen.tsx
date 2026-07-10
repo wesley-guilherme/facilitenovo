@@ -487,14 +487,9 @@ const handleExcluirLogo = () => {
           <Text style={styles.cancelText}>Cancelar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar Empresa</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleExcluirCadastro} style={styles.headerDeleteButton}>
-            <Text style={styles.headerDeleteText}>Excluir</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
-            <Text style={styles.saveText}>Salvar</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
+          <Text style={styles.saveText}>Salvar</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView 
@@ -809,19 +804,6 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     padding: 8,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerDeleteButton: {
-    padding: 8,
-    marginRight: 4,
-  },
-  headerDeleteText: {
-    fontSize: 16,
-    color: '#FF3B30',
-    fontWeight: '600',
   },
   saveText: {
     fontSize: 16,

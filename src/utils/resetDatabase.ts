@@ -38,6 +38,7 @@ export const resetDatabase = async () => {
         logo TEXT,
         ativo INTEGER DEFAULT 1,
         rota TEXT,
+        deleted_at TEXT,
         created_at TEXT,
         updated_at TEXT
       )
@@ -48,11 +49,14 @@ export const resetDatabase = async () => {
       CREATE TABLE IF NOT EXISTS visitas (
         id TEXT PRIMARY KEY,
         empresa_id TEXT NOT NULL,
+        consultor_id TEXT,
+        protocolo_atendimento TEXT,
         solicitante TEXT NOT NULL,
         data_visita TEXT NOT NULL,
         hora_inicio TEXT NOT NULL,
         hora_termino TEXT NOT NULL,
         descricao TEXT NOT NULL,
+        status TEXT DEFAULT 'RASCUNHO',
         assinatura TEXT,
         created_at TEXT,
         updated_at TEXT,
