@@ -72,6 +72,8 @@ export default function EmpresaConsultorScreen() {
 
   // Estados de erro
   const [errors, setErrors] = useState({
+    logoPequena: '',
+    logoMedia: '',
     nome: '',
     endereco: '',
     numero: '',
@@ -205,6 +207,7 @@ const handleSelecionarImagem = async (
         setLogoPequena(
           caminhoFinal
         );
+        setErrors(prev => ({ ...prev, logoPequena: '' }));
 
       } else {
 
@@ -217,6 +220,7 @@ const handleSelecionarImagem = async (
         setLogoMedia(
           caminhoFinal
         );
+        setErrors(prev => ({ ...prev, logoMedia: '' }));
       }
 
     } catch (error) {
@@ -296,6 +300,8 @@ const handleExcluirImagem = (
   };
 
   const handleSalvar =  async () => {
+    const logoPequenaError = !logoPequena ? 'Logo pequena e obrigatoria' : '';
+    const logoMediaError = !logoMedia ? 'Logo marca d agua e obrigatoria' : '';
     const nomeError = nome.trim() === '' ? 'Nome da empresa é obrigatório' : '';
     const enderecoError = endereco.trim() === '' ? 'Endereço é obrigatório' : '';
     const numeroError = numero.trim() === '' ? 'Número é obrigatório' : '';
@@ -306,6 +312,8 @@ const handleExcluirImagem = (
     const telefoneNumeros = telefone.replace(/\D/g, '');
     
     setErrors({
+      logoPequena: logoPequenaError,
+      logoMedia: logoMediaError,
       nome: nomeError,
       endereco: enderecoError,
       numero: numeroError,
@@ -316,7 +324,7 @@ const handleExcluirImagem = (
       email: emailError,
     });
     
-    if (nomeError || enderecoError || numeroError || cidadeError || estadoError || emailError) {
+    if (logoPequenaError || logoMediaError || nomeError || enderecoError || numeroError || cidadeError || estadoError || emailError) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios corretamente');
       return;
     }
@@ -434,6 +442,7 @@ const handleExcluirImagem = (
                   <Text style={styles.excluirButtonText}>Excluir Logo</Text>
                 </TouchableOpacity>
               )}
+              {errors.logoPequena ? <Text style={styles.errorText}>{errors.logoPequena}</Text> : null}
             </View>
 
             {/* Logo Média (Marca d'água) - SEM O X SOBREPOSTO */}
@@ -459,6 +468,7 @@ const handleExcluirImagem = (
                   <Text style={styles.excluirButtonText}>Excluir Marca d'Água</Text>
                 </TouchableOpacity>
               )}
+              {errors.logoMedia ? <Text style={styles.errorText}>{errors.logoMedia}</Text> : null}
             </View>
 
             <View style={styles.form}>

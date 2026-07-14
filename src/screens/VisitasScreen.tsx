@@ -41,6 +41,8 @@ import { db } from '../database/initDatabase';
 
 const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
+const PDF_A4_WIDTH = 595;
+const PDF_A4_HEIGHT = 842;
 
 const formatarDataBR = (data: string) => {
   const partes = data.split('-');
@@ -358,45 +360,45 @@ const carregarDados = async () => {
         <head>
           <meta charset="utf-8" />
           <style>
-            @page { margin: 24px; size: A4; }
+            @page { margin: 18px; size: A4; }
             * { box-sizing: border-box; }
             body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; }
-            .document { width: 100%; border: 1px solid #D7DEEA; border-radius: 8px; overflow: hidden; padding: 0 22px 22px; }
-            .top-bar { height: 10px; margin: 0 -22px 20px; background: #1769AA; }
-            .header { display: flex; min-height: 134px; gap: 20px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #E4E8F0; }
-            .brand { width: 190px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px 0; }
-            .logo-box { width: 160px; height: 58px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-            .header-logo-img { max-width: 160px; max-height: 58px; object-fit: contain; }
-            .test-logo { width: 160px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-            .test-logo-icon { width: 32px; height: 32px; border-radius: 16px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; }
-            .test-logo-name { color: #1769AA; font-size: 21px; line-height: 23px; font-weight: 800; }
+            .document { width: 100%; border: 1px solid #D7DEEA; border-radius: 8px; overflow: hidden; padding: 0 18px 18px; }
+            .top-bar { height: 8px; margin: 0 -18px 14px; background: #1769AA; }
+            .header { display: flex; min-height: 110px; gap: 16px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #E4E8F0; }
+            .brand { width: 178px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 6px 0; }
+            .logo-box { width: 150px; height: 52px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+            .header-logo-img { max-width: 150px; max-height: 52px; object-fit: contain; }
+            .test-logo { width: 150px; height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; }
+            .test-logo-icon { width: 30px; height: 30px; border-radius: 15px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
+            .test-logo-name { color: #1769AA; font-size: 20px; line-height: 22px; font-weight: 800; }
             .test-logo-sub { color: #6B7280; font-size: 9px; line-height: 11px; font-weight: 800; letter-spacing: 2px; }
-            .contact { min-height: 50px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; color: #4B5563; font-size: 12px; line-height: 17px; text-align: center; }
-            .company { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; text-align: center; }
-            .company-name { max-width: 310px; font-size: 24px; line-height: 30px; font-weight: 800; margin-bottom: 10px; }
-            .company-address { color: #4B5563; font-size: 14px; line-height: 19px; }
-            .protocol { background: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+            .contact { min-height: 44px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; color: #4B5563; font-size: 11px; line-height: 15px; text-align: center; }
+            .company { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px; text-align: center; }
+            .company-name { max-width: 310px; font-size: 22px; line-height: 27px; font-weight: 800; margin-bottom: 6px; }
+            .company-address { color: #4B5563; font-size: 13px; line-height: 17px; }
+            .protocol { background: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
             .protocol-label { color: #1769AA; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
-            .protocol-value { font-size: 20px; font-weight: 800; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-            .label { color: #6B7280; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
-            .value { min-height: 36px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 8px 10px; background: #FAFBFD; font-size: 14px; }
-            .section { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+            .protocol-value { font-size: 18px; font-weight: 800; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 12px; }
+            .label { color: #6B7280; font-size: 10px; font-weight: 800; margin-bottom: 3px; }
+            .value { min-height: 30px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 6px 8px; background: #FAFBFD; font-size: 13px; }
+            .section { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
             .rule { flex: 1; height: 1px; background: #DDE3EE; }
             .section-title { font-size: 15px; font-weight: 800; }
-            .description { position: relative; min-height: 250px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 18px; margin-bottom: 18px; overflow: hidden; }
-            .description-text { position: relative; z-index: 1; font-size: 14px; line-height: 22px; color: #1F2937; }
-            .watermark-img { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 320px; height: 120px; object-fit: contain; opacity: 0.07; }
-            .test-watermark { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 330px; height: 78px; display: flex; align-items: center; justify-content: center; gap: 12px; opacity: 0.07; overflow: hidden; }
-            .test-watermark-icon { width: 58px; height: 58px; border-radius: 29px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; }
-            .test-watermark-name { color: #1769AA; font-size: 54px; line-height: 58px; font-weight: 800; }
-            .test-watermark-sub { color: #6B7280; font-size: 16px; line-height: 19px; font-weight: 800; letter-spacing: 4px; }
-            .message { min-height: 66px; display: flex; align-items: center; justify-content: center; background: #1769AA; color: white; border-radius: 8px; padding: 14px 16px; margin-bottom: 22px; text-align: center; font-size: 13px; line-height: 19px; font-weight: 600; }
-            .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 16px 16px 14px; background: #FAFBFD; text-align: center; }
-            .signature-img { width: 70%; height: 82px; object-fit: contain; }
-            .signature-fallback { font-size: 23px; color: #111827; font-style: italic; margin-bottom: 16px; }
-            .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 8px; }
-            .signature-label { font-size: 14px; font-weight: 800; }
+            .description { position: relative; min-height: 210px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 14px; margin-bottom: 12px; overflow: hidden; }
+            .description-text { position: relative; z-index: 1; font-size: 13px; line-height: 20px; color: #1F2937; }
+            .watermark-img { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); width: 300px; height: 110px; object-fit: contain; opacity: 0.07; }
+            .test-watermark { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); width: 310px; height: 72px; display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0.07; overflow: hidden; }
+            .test-watermark-icon { width: 52px; height: 52px; border-radius: 26px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; }
+            .test-watermark-name { color: #1769AA; font-size: 48px; line-height: 52px; font-weight: 800; }
+            .test-watermark-sub { color: #6B7280; font-size: 14px; line-height: 17px; font-weight: 800; letter-spacing: 4px; }
+            .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
+            .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background: #FAFBFD; text-align: center; }
+            .signature-img { width: 70%; height: 60px; object-fit: contain; }
+            .signature-fallback { font-size: 20px; color: #111827; font-style: italic; margin-bottom: 10px; }
+            .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 6px; }
+            .signature-label { font-size: 12px; font-weight: 800; }
           </style>
         </head>
         <body>
@@ -544,6 +546,8 @@ const carregarDados = async () => {
       if (formato === 'pdf') {
         const pdf = await Print.printToFileAsync({
           html: gerarHtmlFormularioLote(formulario),
+          width: PDF_A4_WIDTH,
+          height: PDF_A4_HEIGHT,
           base64: false,
         });
         const pdfBase64 = await FileSystem.readAsStringAsync(pdf.uri, {
