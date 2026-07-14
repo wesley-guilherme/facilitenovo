@@ -12,7 +12,7 @@
  * - A visita e acessada pelo card da empresa
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -42,7 +42,6 @@ import {
   EmpresaAvisoVisita,
   carregarResumoAvisosVisita,
   formatarDataBR,
-  criarDataLocal,
 } from '../services/visitasAvisoService';
 
 const { width, height } = Dimensions.get('window');
@@ -119,7 +118,6 @@ export default function VisitasScreen() {
   const [empresas, setEmpresas] = useState<EmpresaComUltimaVisita[]>([]);
   const [pesquisa, setPesquisa] = useState('');
   const [loading, setLoading] = useState(true);
-  const [diasAviso, setDiasAviso] = useState(30);
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
   const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
   const [modalDataVisible, setModalDataVisible] = useState(false);
@@ -143,7 +141,6 @@ const carregarDados = async () => {
   setLoading(true);
   try {
     const resumo = await carregarResumoAvisosVisita();
-    setDiasAviso(resumo.diasAviso);
     setEmpresas(resumo.empresas);
 
     let visitasDb: Visita[] = [];
