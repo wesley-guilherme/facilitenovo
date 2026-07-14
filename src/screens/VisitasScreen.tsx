@@ -32,7 +32,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-import { File, Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -246,7 +245,6 @@ const carregarDados = async () => {
     const datas = [...new Set(visitasDb.map(v => v.data_visita))];
     datas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
     setDatasDisponiveis(datas);
-    
   } catch (error) {
     console.error('Erro ao carregar dados:', error);
     setEmpresas([]);
@@ -534,8 +532,6 @@ const carregarDados = async () => {
       return;
     }
 
-    const visitasData = formularios.map(formulario => formulario.visita);
-
     const zip = new JSZip();
 
     for (const formulario of formularios) {
@@ -597,50 +593,12 @@ const carregarDados = async () => {
       Alert.alert('Erro', 'Compartilhamento nao disponivel');
     }
 
-    return;
-    
-    // Buscar empresas relacionadas
-    let relatorioContent = `RELATÓRIO DE VISITAS - ${formatarDataBR(data)}\n`;
-    relatorioContent += `${'='.repeat(50)}\n\n`;
-    
-    for (const visita of visitasData) {
-      const empresaResult = await db.getAllAsync(
-        'SELECT nome_fantasia, codigo_referencia FROM empresas WHERE id = ?',
-        [visita.empresa_id]
-      );
-      const empresaData = empresaResult[0] as any;
-      
-      relatorioContent += `📋 VISITA\n`;
-      relatorioContent += `Empresa: ${empresaData?.nome_fantasia || 'N/A'} (${empresaData?.codigo_referencia || 'N/A'})\n`;
-      relatorioContent += `Data: ${formatarDataBR(visita.data_visita)}\n`;
-      relatorioContent += `Horário: ${visita.hora_inicio} - ${visita.hora_termino}\n`;
-      relatorioContent += `Descrição: ${visita.descricao}\n`;
-      relatorioContent += `${'-'.repeat(30)}\n\n`;
-    }
-    
-    // Criar arquivo
-    const fileName = `visitas_${data}.txt`;
-    const filePath = `${Paths.cache.uri}${fileName}`;
-    const arquivo = new File(filePath);
-    
-    await arquivo.write(relatorioContent);
-    
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (isAvailable) {
-      await Sharing.shareAsync(filePath, {
-        mimeType: 'text/plain',
-        dialogTitle: `Enviar relatório de ${formatarDataBR(data)}`,
-      });
-    } else {
-      Alert.alert('Erro', 'Compartilhamento não disponível');
-    }
-    
-    await arquivo.delete();
-    
+
   } catch (error) {
     console.error('Erro ao gerar arquivo:', error);
     Alert.alert('Erro', 'Não foi possível gerar o relatório');
   } finally {
+    setFormularioCaptura(null);
     setGerandoRelatorio(false);
   }
 };

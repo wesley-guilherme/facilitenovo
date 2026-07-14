@@ -123,15 +123,35 @@ export default function FormularioVisitaScreen() {
     return `${ano}-${mes}-${dia}`;
   };
 
-  const obterDataVisitaBanco = () => {
-    const partes = dataVisita.split('/').map(Number);
+  const obterDataDigitadaValida = () => {
+    const dataNormalizada = dataVisita.trim();
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dataNormalizada);
 
-    if (partes.length === 3 && partes.every(Boolean)) {
-      const [dia, mes, ano] = partes;
-      return formatarDataBanco(new Date(ano, mes - 1, dia));
+    if (!match) {
+      return null;
     }
 
-    return formatarDataBanco(dataSelecionada);
+    const dia = Number(match[1]);
+    const mes = Number(match[2]);
+    const ano = Number(match[3]);
+    const data = new Date(ano, mes - 1, dia);
+
+    const dataExiste =
+      data.getFullYear() === ano &&
+      data.getMonth() === mes - 1 &&
+      data.getDate() === dia;
+
+    if (!dataExiste) {
+      return null;
+    }
+
+    return data;
+  };
+
+  const obterDataVisitaBanco = () => {
+    return formatarDataBanco(
+      obterDataDigitadaValida() || dataSelecionada
+    );
   };
 
   const carregarTextosPredefinidos = async () => {
@@ -418,6 +438,10 @@ const visita =
     }
     if (!dataVisita) {
       Alert.alert('Erro', 'Informe a data da visita');
+      return false;
+    }
+    if (!obterDataDigitadaValida()) {
+      Alert.alert('Erro', 'Informe uma data valida no formato DD/MM/AAAA');
       return false;
     }
     if (!horaInicio) {

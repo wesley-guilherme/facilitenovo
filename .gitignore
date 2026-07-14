@@ -27,6 +27,8 @@ yarn-debug.*
 yarn-error.*
 expo-web.log
 expo-web.err.log
+expo-web-*.log
+expo-web-*.err.log
 
 # macOS
 .DS_Store
