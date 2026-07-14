@@ -461,8 +461,40 @@ const visita =
     return false;
   };
 
+  const consultorCadastrado = () => {
+    return Boolean(
+      consultor.nome.trim() &&
+      consultor.email.trim() &&
+      consultor.whatsapp.trim() &&
+      consultor.rota.trim()
+    );
+  };
+
+  const validarPerfilConsultor = () => {
+    if (consultorCadastrado()) {
+      return true;
+    }
+
+    Alert.alert(
+      'Perfil do consultor obrigatorio',
+      'Cadastre o perfil do consultor antes de salvar ou atualizar o formulario de visita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cadastrar',
+          onPress: () => navigation.navigate('EditarConsultor', { consultor }),
+        },
+      ]
+    );
+
+    return false;
+  };
+
   // Validar formulário
   const validarFormulario = (): boolean => {
+    if (!validarPerfilConsultor()) {
+      return false;
+    }
     if (!validarEmpresaConsultor()) {
       return false;
     }

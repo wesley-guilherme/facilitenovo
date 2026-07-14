@@ -54,8 +54,24 @@ export default function ConfiguracoesScreen() {
 
   // Carregar informações dos dados
   useEffect(() => {
+    carregarConfiguracoes();
     carregarInfoDados();
   }, []);
+
+  const carregarConfiguracoes = async () => {
+    try {
+      const config = await db.getFirstAsync<{ valor: string }>(
+        'SELECT valor FROM configuracoes WHERE chave = ?',
+        ['dias_aviso']
+      );
+
+      if (config?.valor) {
+        setDiasAviso(config.valor);
+      }
+    } catch (error) {
+      console.log('Erro ao carregar configurações:', error);
+    }
+  };
 
  const carregarInfoDados = async () => {
   try {
@@ -97,20 +113,31 @@ export default function ConfiguracoesScreen() {
     navigation.goBack();
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     const dias = parseInt(diasAviso, 10);
     if (isNaN(dias) || dias <= 0) {
       Alert.alert('Erro', 'Digite um número válido de dias');
       return;
     }
 
-    const configuracoes = {
-      diasAviso,
-      notificacoesAtivas,
-    };
-    
-    console.log('Configurações salvas:', configuracoes);
-    Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO configuracoes
+          (chave, valor, updated_at)
+         VALUES (?, ?, ?)`,
+        [
+          'dias_aviso',
+          String(dias),
+          new Date().toISOString(),
+        ]
+      );
+
+      setDiasAviso(String(dias));
+      Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      Alert.alert('Erro', 'Não foi possível salvar as configurações');
+    }
   };
 
   // ==================== BACKUP ====================

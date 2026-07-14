@@ -38,33 +38,17 @@ import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import JSZip from 'jszip';
 import { db } from '../database/initDatabase';
+import {
+  EmpresaAvisoVisita,
+  carregarResumoAvisosVisita,
+  formatarDataBR,
+  criarDataLocal,
+} from '../services/visitasAvisoService';
 
 const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const PDF_A4_WIDTH = 595;
 const PDF_A4_HEIGHT = 842;
-
-const formatarDataBR = (data: string) => {
-  const partes = data.split('-');
-
-  if (partes.length === 3) {
-    const [ano, mes, dia] = partes;
-    return `${dia}/${mes}/${ano}`;
-  }
-
-  return new Date(data).toLocaleDateString('pt-BR');
-};
-
-const criarDataLocal = (data: string) => {
-  const partes = data.split('-').map(Number);
-
-  if (partes.length === 3) {
-    const [ano, mes, dia] = partes;
-    return new Date(ano, mes - 1, dia);
-  }
-
-  return new Date(data);
-};
 
 type VisitasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Visitas'>;
 
@@ -128,11 +112,7 @@ type FormularioLote = {
 };
 
 // Tipo para Empresa com dados agregados da última visita
-type EmpresaComUltimaVisita = Empresa & {
-  ultimaVisita: Visita | null;
-  diasDesdeUltimaVisita: number;
-  statusAtraso: 'normal' | 'atencao' | 'critico';
-};
+type EmpresaComUltimaVisita = EmpresaAvisoVisita;
 
 export default function VisitasScreen() {
   const navigation = useNavigation<VisitasScreenNavigationProp>(); 
@@ -151,38 +131,21 @@ export default function VisitasScreen() {
   // Carregar configurações e dados
   useFocusEffect(
     useCallback(() => {
-      carregarConfiguracoes();
-      carregarDados();
+      carregarTela();
     }, [])
   );
 
-  const carregarConfiguracoes = async () => {
-    try {
-      const result = await db.getAllAsync('SELECT valor FROM configuracoes WHERE chave = "dias_aviso"');
-      if (result.length > 0) {
-        setDiasAviso(parseInt((result as any[])[0].valor) || 30);
-      }
-    } catch (error) {
-      console.log('Configurações não encontradas, usando padrão 30 dias');
-    }
+  const carregarTela = async () => {
+    await carregarDados();
   };
 
 const carregarDados = async () => {
   setLoading(true);
   try {
-    // Buscar empresas ativas - com tipagem explícita
-    let empresasDb: Empresa[] = [];
-    try {
-      const result = await db.getAllAsync(
-        'SELECT * FROM empresas WHERE ativo = 1 AND deleted_at IS NULL ORDER BY nome_fantasia ASC'
-      );
-      empresasDb = result as Empresa[];
-    } catch (tableError) {
-      console.log('Tabela empresas não encontrada ou vazia');
-      empresasDb = [];
-    }
-    
-    // Buscar todas as visitas - com tipagem explícita
+    const resumo = await carregarResumoAvisosVisita();
+    setDiasAviso(resumo.diasAviso);
+    setEmpresas(resumo.empresas);
+
     let visitasDb: Visita[] = [];
     try {
       const result = await db.getAllAsync('SELECT * FROM visitas ORDER BY data_visita DESC');
@@ -191,58 +154,7 @@ const carregarDados = async () => {
       console.log('Tabela visitas não encontrada ou vazia');
       visitasDb = [];
     }
-    
-    // Se não há empresas, retorna lista vazia
-    if (empresasDb.length === 0) {
-      setEmpresas([]);
-      setDatasDisponiveis([]);
-      setLoading(false);
-      return;
-    }
-    
-    // Agrupar visitas por empresa
-    const empresasComVisitas: EmpresaComUltimaVisita[] = [];
-    
-    for (const empresa of empresasDb) {
-      // Filtrar visitas da empresa
-      const visitasEmpresa = visitasDb.filter(v => v.empresa_id === empresa.id);
-      
-      // Ordenar por data (mais recente primeiro)
-      visitasEmpresa.sort((a, b) => new Date(b.data_visita).getTime() - new Date(a.data_visita).getTime());
-      
-      const ultimaVisita = visitasEmpresa.length > 0 ? visitasEmpresa[0] : null;
-      
-      // Calcular dias desde última visita
-      let diasDesdeUltimaVisita = 999;
-      let statusAtraso: 'normal' | 'atencao' | 'critico' = 'normal';
-      
-      if (ultimaVisita) {
-        const hoje = new Date();
-        const ultimaData = criarDataLocal(ultimaVisita.data_visita);
-        const diffTime = hoje.getTime() - ultimaData.getTime();
-        diasDesdeUltimaVisita = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diasDesdeUltimaVisita >= diasAviso) {
-          statusAtraso = 'atencao';
-        }
-        if (diasDesdeUltimaVisita >= diasAviso + 15) {
-          statusAtraso = 'critico';
-        }
-      }
-      
-      empresasComVisitas.push({
-        ...empresa,
-        ultimaVisita,
-        diasDesdeUltimaVisita,
-        statusAtraso,
-      });
-    }
-    
-    // Ordenar: as que estão há mais dias sem visita no topo
-    empresasComVisitas.sort((a, b) => b.diasDesdeUltimaVisita - a.diasDesdeUltimaVisita);
-    
-    setEmpresas(empresasComVisitas);
-    
+
     // Extrair datas disponíveis para relatório
     const datas = [...new Set(visitasDb.map(v => v.data_visita))];
     datas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -618,7 +530,7 @@ const carregarDados = async () => {
     const getStatusText = () => {
       if (!item.ultimaVisita) return '🚫 Nunca visitada';
       if (item.statusAtraso === 'critico') return `⚠️ ${item.diasDesdeUltimaVisita} dias sem visita!`;
-      if (item.statusAtraso === 'atencao') return `📢 ${item.diasDesdeUltimaVisita} dias sem visita`;
+      if (item.statusAtraso === 'atencao') return `📢 Faltam ${item.diasRestantes} dias`;
       return `✅ Última visita: ${formatarDataBR(item.ultimaVisita.data_visita)}`;
     };
     

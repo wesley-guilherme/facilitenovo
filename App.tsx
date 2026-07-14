@@ -29,7 +29,9 @@ import FaleConoscoScreen from './src/screens/FaleConoscoScreen';
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
 // Componente do cabeçalho personalizado APENAS PARA A HOME
-function CustomHeader({ navigation }: any) {
+function CustomHeader({ navigation, options }: any) {
+  const headerRight = options?.headerRight?.({ tintColor: '#6C757D' });
+
   return (
     <View style={styles.customHeader}>
       <TouchableOpacity 
@@ -48,12 +50,14 @@ function CustomHeader({ navigation }: any) {
         />
       </View>
       
+      {headerRight || (
       <TouchableOpacity 
         style={styles.notificationButton}
         activeOpacity={0.7}
       >
         <Text style={styles.notificationIcon}>🔔</Text>
       </TouchableOpacity>
+      )}
     </View>
   );
 }
