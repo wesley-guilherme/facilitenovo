@@ -57,14 +57,6 @@ const PDF_A4_HEIGHT = 842;
 
 type FormularioVisitaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'FormularioVisita'>;
 
-// Tipo para Empresa
-
-// Tipo para Texto Predefinido
-type TextoPredefinido = {
-  id: string;
-  texto: string;
-};
-
 export default function FormularioVisitaScreen() {
   const navigation = useNavigation<FormularioVisitaScreenNavigationProp>();
   const route = useRoute<any>();
@@ -90,8 +82,6 @@ export default function FormularioVisitaScreen() {
   const [tipoHoraAtual, setTipoHoraAtual] = useState< 'inicio' | 'termino' >('inicio');
   const [descricao, setDescricao] = useState('');
   const [assinatura, setAssinatura] = useState<string | null>(null);
-  const [textosPredefinidos, setTextosPredefinidos] = useState<TextoPredefinido[]>([]);
-  const [showTextosModal, setShowTextosModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ultimaVisita, setUltimaVisita] = useState<VisitaDB | null>(null);
   const [showFormularioFinal, setShowFormularioFinal] = useState(false);
@@ -103,11 +93,6 @@ export default function FormularioVisitaScreen() {
   const formularioJaSalvo = !!ultimaVisita;
   const textoAcaoFormulario = formularioJaSalvo ? 'Atualizar' : 'Salvar';
   const textoBotaoPrincipal = abaAtiva === 'info' ? 'Próximo' : textoAcaoFormulario;
-
-  // Carregar textos predefinidos
-  useEffect(() => {
-    carregarTextosPredefinidos();
-  }, []);
 
   useEffect(() => {
     const empresaParam = route.params?.empresa;
@@ -154,15 +139,6 @@ export default function FormularioVisitaScreen() {
     return formatarDataBanco(
       obterDataDigitadaValida() || dataSelecionada
     );
-  };
-
-  const carregarTextosPredefinidos = async () => {
-    try {
-      const textos = await db.getAllAsync('SELECT id, texto FROM textos_predefinidos ORDER BY id DESC');
-      setTextosPredefinidos(textos as TextoPredefinido[]);
-    } catch (error) {
-      console.log('Erro ao carregar textos predefinidos:', error);
-    }
   };
 
   const selecionarEmpresa = (empresa: EmpresaDB) => {
@@ -421,12 +397,6 @@ const visita =
 
 };
 
-
-  // Inserir texto predefinido
-  const inserirTextoPredefinido = (texto: string) => {
-    setDescricao(prev => prev ? `${prev}\n\n${texto}` : texto);
-    setShowTextosModal(false);
-  };
 
   const empresaConsultorCadastrada = () => {
     return Boolean(
@@ -1175,35 +1145,6 @@ const renderAssinaturaAba = () => (
         {abaAtiva === 'info' ? renderInfoAba() : renderAssinaturaAba()}
       </KeyboardAvoidingView>
 
-      {/* Modal de textos predefinidos */}
-      <Modal
-        visible={showTextosModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowTextosModal(false)}
-      >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTextosModal(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Textos Predefinidos</Text>
-            <ScrollView style={styles.modalList}>
-              {textosPredefinidos.map((texto) => (
-                <TouchableOpacity
-                  key={texto.id}
-                  style={styles.modalItem}
-                  onPress={() => inserirTextoPredefinido(texto.texto)}
-                >
-                  <Text style={styles.modalItemTexto}>{texto.texto}</Text>
-                  <Text style={styles.modalItemArrow}>→</Text>
-                </TouchableOpacity>
-              ))}
-              {textosPredefinidos.length === 0 && (
-                <Text style={styles.modalEmptyText}>Nenhum texto predefinido cadastrado</Text>
-              )}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
       {showDatePicker && (
         <DateTimePicker
           value={dataSelecionada}
@@ -1661,20 +1602,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
   },
-  textoPredefinidoButton: {
-    backgroundColor: '#F8F9FC',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-  },
-  textoPredefinidoButtonText: {
-    fontSize: 12,
-    color: '#2463EB',
-  },
   assinaturaContainer: {
     flex: 1,
     padding: 16,
@@ -1761,83 +1688,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     resizeMode: 'contain',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '90%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalSearchInput: {
-    backgroundColor: '#F8F9FC',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 12,
-  },
-  modalSearchButton: {
-    backgroundColor: '#2463EB',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalSearchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalList: {
-    maxHeight: 400,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  modalItemCodigo: {
-    fontSize: 12,
-    color: '#6C757D',
-    marginRight: 8,
-  },
-  modalItemNome: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1A1A1A',
-  },
-  modalItemTexto: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1A1A1A',
-  },
-  modalItemArrow: {
-    fontSize: 16,
-    color: '#ADB5BD',
-  },
-  modalEmptyText: {
-    textAlign: 'center',
-    color: '#6C757D',
-    paddingVertical: 20,
   },
   documentModalContainer: {
     flex: 1,

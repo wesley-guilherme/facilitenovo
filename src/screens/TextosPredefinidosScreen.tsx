@@ -27,7 +27,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
-import { db } from '../database/initDatabase';
 import { TextosPredefinidosRepository } from '../database/textosPredefinidosRepository';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -118,7 +117,7 @@ try {
   if (editingTexto) {
 
     await TextosPredefinidosRepository.atualizar([
-      formTexto,
+      formTexto.trim(),
       new Date().toISOString(),
       editingTexto.id
     ]);
@@ -134,7 +133,7 @@ try {
 
     await TextosPredefinidosRepository.inserir([
       novoId,
-      formTexto,
+      formTexto.trim(),
       new Date().toISOString()
     ]);
 
@@ -176,7 +175,7 @@ try {
           style: 'destructive',
           onPress: async () => {
             try {
-              await db.runAsync('DELETE FROM textos_predefinidos WHERE id = ?', [item.id]);
+              await TextosPredefinidosRepository.excluir(item.id);
               Alert.alert('Sucesso', 'Texto excluído com sucesso!');
               carregarTextos(); // Recarregar lista
             } catch (error) {
