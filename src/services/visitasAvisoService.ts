@@ -97,11 +97,12 @@ export const carregarDiasAviso = async () => {
 };
 
 const calcularDiasDesde = (dataVisita: string) => {
-  const hoje = new Date();
+  const agora = new Date();
+  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
   const ultimaData = criarDataLocal(dataVisita);
   const diffTime = hoje.getTime() - ultimaData.getTime();
 
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(Math.floor(diffTime / (1000 * 60 * 60 * 24)), 0);
 };
 
 const classificarEmpresa = (
@@ -147,7 +148,10 @@ export const carregarResumoAvisosVisita = async (): Promise<ResumoAvisosVisita> 
   );
 
   const visitasDb = await db.getAllAsync<VisitaAviso>(
-    'SELECT * FROM visitas ORDER BY data_visita DESC, hora_termino DESC'
+    `SELECT *
+     FROM visitas
+     WHERE status <> 'RASCUNHO'
+     ORDER BY data_visita DESC, hora_termino DESC`
   );
 
   const empresas = empresasDb.map((empresa) => {

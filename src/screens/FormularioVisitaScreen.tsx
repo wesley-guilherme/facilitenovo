@@ -462,12 +462,6 @@ const visita =
 
   // Validar formulário
   const validarFormulario = (): boolean => {
-    if (!validarPerfilConsultor()) {
-      return false;
-    }
-    if (!validarEmpresaConsultor()) {
-      return false;
-    }
     if (!empresaSelecionada) {
       Alert.alert('Erro', 'Selecione uma empresa');
       return false;
@@ -536,6 +530,13 @@ const visita =
       return;
     }
     
+    if (!validarPerfilConsultor()) {
+      return;
+    }
+    if (!validarEmpresaConsultor()) {
+      return;
+    }
+
     if (!assinatura) {
       Alert.alert('Erro', 'A assinatura é obrigatória');
       return;
