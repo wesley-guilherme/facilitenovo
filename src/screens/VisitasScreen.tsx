@@ -89,6 +89,7 @@ type EmpresaConsultorLote = {
   nome?: string | null;
   endereco?: string | null;
   numero?: string | null;
+  bairro?: string | null;
   cidade?: string | null;
   estado?: string | null;
   celular?: string | null;
@@ -235,7 +236,8 @@ const carregarDados = async () => {
     formato: FormatoLote
   ) => `${normalizarNomeArquivo(empresa.nome_fantasia)}${dataArquivo(data)}.${formato}`;
 
-  const nomeZipLote = (data: string) => `${dataArquivo(data)}envio.zip`;
+  const nomeZipLote = (data: string, formato: FormatoLote) =>
+    `${dataArquivo(data)}_${formato}envio.zip`;
 
   const enderecoConsultorLote = (empresaConsultor: EmpresaConsultorLote) => {
     const ruaNumero = [empresaConsultor.endereco, empresaConsultor.numero]
@@ -245,22 +247,60 @@ const carregarDados = async () => {
       .filter(Boolean)
       .join('/');
 
-    return [ruaNumero || 'Endereco nao informado', cidadeEstado]
+    return [ruaNumero || 'Endereco nao informado', empresaConsultor.bairro, cidadeEstado]
       .filter(Boolean)
       .join(' - ');
   };
 
-  const gerarHtmlFormularioLote = ({
+  const obterMimeImagem = (uri: string) => {
+    const uriLimpa = uri.split('?')[0].toLowerCase();
+
+    if (uriLimpa.endsWith('.jpg') || uriLimpa.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+
+    if (uriLimpa.endsWith('.webp')) {
+      return 'image/webp';
+    }
+
+    return 'image/png';
+  };
+
+  const resolverImagemParaPdf = async (uri?: string | null) => {
+    if (!uri) {
+      return null;
+    }
+
+    if (uri.startsWith('data:') || uri.startsWith('http')) {
+      return uri;
+    }
+
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      return `data:${obterMimeImagem(uri)};base64,${base64}`;
+    } catch (error) {
+      console.warn('Nao foi possivel preparar imagem para PDF:', error);
+      return uri;
+    }
+  };
+
+  const gerarHtmlFormularioLote = async ({
     visita,
     empresa,
     empresaConsultor,
     consultor,
   }: FormularioLote) => {
-    const logoPequena = empresaConsultor.logo_pequena
-      ? `<img src="${escaparHtml(empresaConsultor.logo_pequena)}" class="header-logo-img" />`
+    const logoPequenaPdf = await resolverImagemParaPdf(empresaConsultor.logo_pequena);
+    const logoMediaPdf = await resolverImagemParaPdf(empresaConsultor.logo_media);
+
+    const logoPequena = logoPequenaPdf
+      ? `<img src="${escaparHtml(logoPequenaPdf)}" class="header-logo-img" />`
       : '<div class="test-logo"><div class="test-logo-icon">+</div><div><div class="test-logo-name">FACILITE</div><div class="test-logo-sub">CONSULTORIA</div></div></div>';
-    const marcaDagua = empresaConsultor.logo_media
-      ? `<img src="${escaparHtml(empresaConsultor.logo_media)}" class="watermark-img" />`
+    const marcaDagua = logoMediaPdf
+      ? `<img src="${escaparHtml(logoMediaPdf)}" class="watermark-img" />`
       : '<div class="test-watermark"><div class="test-watermark-icon">+</div><div><div class="test-watermark-name">FACILITE</div><div class="test-watermark-sub">CONSULTORIA</div></div></div>';
 
     return `
@@ -270,40 +310,40 @@ const carregarDados = async () => {
           <meta charset="utf-8" />
           <style>
             @page { margin: 18px; size: A4; }
-            * { box-sizing: border-box; }
-            body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background-color: #ffffff; }
             .document { width: 100%; border: 1px solid #D7DEEA; border-radius: 8px; overflow: hidden; padding: 0 18px 18px; }
-            .top-bar { height: 8px; margin: 0 -18px 14px; background: #1769AA; }
+            .top-bar { height: 8px; margin: 0 -18px 14px; background-color: #1769AA; }
             .header { display: flex; min-height: 110px; gap: 16px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #E4E8F0; }
             .brand { width: 178px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 6px 0; }
             .logo-box { width: 150px; height: 52px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-            .header-logo-img { max-width: 150px; max-height: 52px; object-fit: contain; }
+            .header-logo-img { width: auto; height: auto; max-width: 150px; max-height: 52px; object-fit: contain; }
             .test-logo { width: 150px; height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; }
-            .test-logo-icon { width: 30px; height: 30px; border-radius: 15px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
+            .test-logo-icon { width: 30px; height: 30px; border-radius: 15px; background-color: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
             .test-logo-name { color: #1769AA; font-size: 20px; line-height: 22px; font-weight: 800; }
             .test-logo-sub { color: #6B7280; font-size: 9px; line-height: 11px; font-weight: 800; letter-spacing: 2px; }
             .contact { min-height: 44px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; color: #4B5563; font-size: 11px; line-height: 15px; text-align: center; }
             .company { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px; text-align: center; }
             .company-name { max-width: 310px; font-size: 22px; line-height: 27px; font-weight: 800; margin-bottom: 6px; }
             .company-address { color: #4B5563; font-size: 13px; line-height: 17px; }
-            .protocol { background: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+            .protocol { background-color: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
             .protocol-label { color: #1769AA; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
             .protocol-value { font-size: 18px; font-weight: 800; }
             .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 12px; }
             .label { color: #6B7280; font-size: 10px; font-weight: 800; margin-bottom: 3px; }
-            .value { min-height: 30px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 6px 8px; background: #FAFBFD; font-size: 13px; }
+            .value { min-height: 30px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 6px 8px; background-color: #FAFBFD; font-size: 13px; }
             .section { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-            .rule { flex: 1; height: 1px; background: #DDE3EE; }
+            .rule { flex: 1; height: 1px; background-color: #DDE3EE; }
             .section-title { font-size: 15px; font-weight: 800; }
             .description { position: relative; min-height: 210px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 14px; margin-bottom: 12px; overflow: hidden; }
             .description-text { position: relative; z-index: 1; font-size: 13px; line-height: 20px; color: #1F2937; }
-            .watermark-img { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); width: 300px; height: 110px; object-fit: contain; opacity: 0.07; }
+            .watermark-img { position: absolute; top: 56px; left: 50%; margin-left: -150px; width: 300px; height: 110px; object-fit: contain; opacity: 0.07; }
             .test-watermark { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); width: 310px; height: 72px; display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0.07; overflow: hidden; }
-            .test-watermark-icon { width: 52px; height: 52px; border-radius: 26px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; }
+            .test-watermark-icon { width: 52px; height: 52px; border-radius: 26px; background-color: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; }
             .test-watermark-name { color: #1769AA; font-size: 48px; line-height: 52px; font-weight: 800; }
             .test-watermark-sub { color: #6B7280; font-size: 14px; line-height: 17px; font-weight: 800; letter-spacing: 4px; }
-            .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
-            .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background: #FAFBFD; text-align: center; }
+            .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background-color: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
+            .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background-color: #FAFBFD; text-align: center; }
             .signature-img { width: 70%; height: 60px; object-fit: contain; }
             .signature-fallback { font-size: 20px; color: #111827; font-style: italic; margin-bottom: 10px; }
             .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 6px; }
@@ -454,7 +494,7 @@ const carregarDados = async () => {
 
       if (formato === 'pdf') {
         const pdf = await Print.printToFileAsync({
-          html: gerarHtmlFormularioLote(formulario),
+          html: await gerarHtmlFormularioLote(formulario),
           width: PDF_A4_WIDTH,
           height: PDF_A4_HEIGHT,
           base64: false,
@@ -489,7 +529,7 @@ const carregarDados = async () => {
       compressionOptions: { level: 6 },
     });
 
-    const lotePath = `${FileSystem.cacheDirectory}${nomeZipLote(data)}`;
+    const lotePath = `${FileSystem.cacheDirectory}${nomeZipLote(data, formato)}`;
 
     await FileSystem.writeAsStringAsync(lotePath, zipBase64, {
       encoding: FileSystem.EncodingType.Base64,

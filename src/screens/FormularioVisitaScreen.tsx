@@ -24,7 +24,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Keyboard,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   Modal,
   Pressable,
@@ -49,7 +49,6 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { captureRef } from 'react-native-view-shot';
 
-const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const HEADER_HEIGHT = 60;
 const PDF_A4_WIDTH = 595;
@@ -62,6 +61,11 @@ export default function FormularioVisitaScreen() {
   const route = useRoute<any>();
   const { consultor } = useConsultor();
   const { empresa: empresaConsultor } = useEmpresa();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const telaEmPaisagem = windowWidth > windowHeight;
+  const alturaCampoAssinatura = telaEmPaisagem
+    ? Math.min(Math.max(windowHeight - 230, 220), 360)
+    : Math.min(Math.max(windowWidth * 0.62, 300), 380);
 
   
   // Estados das abas
@@ -403,6 +407,7 @@ const visita =
       empresaConsultor.nome.trim() &&
       empresaConsultor.endereco.trim() &&
       empresaConsultor.numero.trim() &&
+      empresaConsultor.bairro.trim() &&
       empresaConsultor.cidade.trim() &&
       empresaConsultor.estado.trim() &&
       empresaConsultor.email.trim() &&
@@ -493,6 +498,14 @@ const visita =
     return true;
   };
 
+  const abrirAbaAssinatura = () => {
+    if (!validarFormulario()) {
+      return;
+    }
+
+    setAbaAtiva('assinatura');
+  };
+
   // Limpar Formulário quando não salvar
 
   useFocusEffect(
@@ -523,12 +536,12 @@ const visita =
 
   // Salvar ou atualizar o formulário único da empresa
   const handleSalvar = async () => {
-    if (!validarFormulario()) return;
-    
     if (abaAtiva === 'info') {
-      setAbaAtiva('assinatura');
+      abrirAbaAssinatura();
       return;
     }
+
+    if (!validarFormulario()) return;
     
     if (!validarPerfilConsultor()) {
       return;
@@ -634,6 +647,41 @@ const visita =
   const gerarNomeArquivoPng = () =>
     `${normalizarNomeArquivo(empresaSelecionada?.nome_fantasia)}${obterDataParaNomeArquivo()}.png`;
 
+  const obterMimeImagem = (uri: string) => {
+    const uriLimpa = uri.split('?')[0].toLowerCase();
+
+    if (uriLimpa.endsWith('.jpg') || uriLimpa.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+
+    if (uriLimpa.endsWith('.webp')) {
+      return 'image/webp';
+    }
+
+    return 'image/png';
+  };
+
+  const resolverImagemParaPdf = async (uri?: string | null) => {
+    if (!uri) {
+      return null;
+    }
+
+    if (uri.startsWith('data:') || uri.startsWith('http')) {
+      return uri;
+    }
+
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      return `data:${obterMimeImagem(uri)};base64,${base64}`;
+    } catch (error) {
+      console.warn('Nao foi possivel preparar imagem para PDF:', error);
+      return uri;
+    }
+  };
+
   const enderecoConsultor = () => {
     const ruaNumero = [empresaConsultor.endereco, empresaConsultor.numero]
       .filter(Boolean)
@@ -642,13 +690,13 @@ const visita =
       .filter(Boolean)
       .join('/');
 
-    return [ruaNumero || 'Endereco nao informado', cidadeEstado]
+    return [ruaNumero || 'Endereco nao informado', empresaConsultor.bairro, cidadeEstado]
       .filter(Boolean)
       .join(' - ');
   };
 
-  const gerarLogoHtml = (marcaDagua = false) => {
-    const logo = marcaDagua ? empresaConsultor.logoMedia : empresaConsultor.logoPequena;
+  const gerarLogoHtml = (marcaDagua = false, logoPdf?: string | null) => {
+    const logo = logoPdf ?? (marcaDagua ? empresaConsultor.logoMedia : empresaConsultor.logoPequena);
 
     if (logo) {
       return `<img src="${escaparHtml(logo)}" class="${marcaDagua ? 'watermark-img' : 'header-logo-img'}" />`;
@@ -673,47 +721,51 @@ const visita =
     return '<div class="signature-fallback">Assinatura confirmada</div>';
   };
 
-  const gerarHtmlFormularioPdf = () => `
+  const gerarHtmlFormularioPdf = async () => {
+    const logoPequenaPdf = await resolverImagemParaPdf(empresaConsultor.logoPequena);
+    const logoMediaPdf = await resolverImagemParaPdf(empresaConsultor.logoMedia);
+
+    return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
         <style>
           @page { margin: 18px; size: A4; }
-          * { box-sizing: border-box; }
-          body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background-color: #ffffff; }
           .document { width: 100%; border: 1px solid #D7DEEA; border-radius: 8px; overflow: hidden; padding: 0 18px 18px; }
-          .top-bar { height: 8px; margin: 0 -18px 14px; background: #1769AA; }
+          .top-bar { height: 8px; margin: 0 -18px 14px; background-color: #1769AA; }
           .header { display: flex; min-height: 110px; gap: 16px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #E4E8F0; }
           .brand { width: 178px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 6px 0; }
           .logo-box { width: 150px; height: 52px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-          .header-logo-img { max-width: 150px; max-height: 52px; object-fit: contain; }
+          .header-logo-img { width: auto; height: auto; max-width: 150px; max-height: 52px; object-fit: contain; }
           .test-logo { width: 150px; height: 52px; display: flex; align-items: center; justify-content: center; gap: 9px; }
-          .test-logo-icon { width: 30px; height: 30px; border-radius: 15px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
+          .test-logo-icon { width: 30px; height: 30px; border-radius: 15px; background-color: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
           .test-logo-name { color: #1769AA; font-size: 20px; line-height: 22px; font-weight: 800; }
           .test-logo-sub { color: #6B7280; font-size: 9px; line-height: 11px; font-weight: 800; letter-spacing: 2px; }
           .contact { min-height: 44px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; color: #4B5563; font-size: 11px; line-height: 15px; text-align: center; }
           .company { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px; text-align: center; }
           .company-name { max-width: 310px; font-size: 22px; line-height: 27px; font-weight: 800; margin-bottom: 6px; }
           .company-address { color: #4B5563; font-size: 13px; line-height: 17px; }
-          .protocol { background: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+          .protocol { background-color: #EEF6FD; border-left: 5px solid #1769AA; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
           .protocol-label { color: #1769AA; font-size: 11px; font-weight: 800; margin-bottom: 4px; }
           .protocol-value { font-size: 18px; font-weight: 800; }
           .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 12px; }
           .label { color: #6B7280; font-size: 10px; font-weight: 800; margin-bottom: 3px; }
-          .value { min-height: 30px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 6px 8px; background: #FAFBFD; font-size: 13px; }
+          .value { min-height: 30px; border: 1px solid #DDE3EE; border-radius: 6px; padding: 6px 8px; background-color: #FAFBFD; font-size: 13px; }
           .section { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-          .rule { flex: 1; height: 1px; background: #DDE3EE; }
+          .rule { flex: 1; height: 1px; background-color: #DDE3EE; }
           .section-title { font-size: 15px; font-weight: 800; }
           .description { position: relative; min-height: 210px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 14px; margin-bottom: 12px; overflow: hidden; }
           .description-text { position: relative; z-index: 1; font-size: 13px; line-height: 20px; color: #1F2937; }
-          .watermark-img { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); width: 300px; height: 110px; object-fit: contain; opacity: 0.07; }
+          .watermark-img { position: absolute; top: 56px; left: 50%; margin-left: -150px; width: 300px; height: 110px; object-fit: contain; opacity: 0.07; }
           .test-watermark { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); width: 310px; height: 72px; display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0.07; overflow: hidden; }
-          .test-watermark-icon { width: 52px; height: 52px; border-radius: 26px; background: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; }
+          .test-watermark-icon { width: 52px; height: 52px; border-radius: 26px; background-color: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; }
           .test-watermark-name { color: #1769AA; font-size: 48px; line-height: 52px; font-weight: 800; }
           .test-watermark-sub { color: #6B7280; font-size: 14px; line-height: 17px; font-weight: 800; letter-spacing: 4px; }
-          .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
-          .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background: #FAFBFD; text-align: center; }
+          .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background-color: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
+          .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background-color: #FAFBFD; text-align: center; }
           .signature-img { width: 70%; height: 60px; object-fit: contain; }
           .signature-fallback { font-size: 20px; color: #111827; font-style: italic; margin-bottom: 10px; }
           .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 6px; }
@@ -725,7 +777,7 @@ const visita =
           <div class="top-bar"></div>
           <section class="header">
             <div class="brand">
-              <div class="logo-box">${gerarLogoHtml(false)}</div>
+              <div class="logo-box">${gerarLogoHtml(false, logoPequenaPdf)}</div>
               <div class="contact">
                 ${empresaConsultor.telefone ? `<div>Tel: ${escaparHtml(empresaConsultor.telefone)}</div>` : ''}
                 ${empresaConsultor.celular ? `<div>Cel: ${escaparHtml(empresaConsultor.celular)}</div>` : ''}
@@ -755,7 +807,7 @@ const visita =
             <div class="rule"></div>
           </section>
           <section class="description">
-            ${gerarLogoHtml(true)}
+            ${gerarLogoHtml(true, logoMediaPdf)}
             <div class="description-text">${escaparHtml(descricao)}</div>
           </section>
           <section class="message">
@@ -770,6 +822,7 @@ const visita =
       </body>
     </html>
   `;
+  };
 
   const compartilharPdf = async () => {
     if (compartilhandoPdf) {
@@ -786,7 +839,7 @@ const visita =
       }
 
       const pdf = await Print.printToFileAsync({
-        html: gerarHtmlFormularioPdf(),
+        html: await gerarHtmlFormularioPdf(),
         width: PDF_A4_WIDTH,
         height: PDF_A4_HEIGHT,
         base64: false,
@@ -1027,7 +1080,7 @@ const renderAssinaturaAba = () => (
       Peça para o cliente assinar na linha abaixo
     </Text>
 
-    <View style={styles.signatureContainer}>
+    <View style={[styles.signatureContainer, { height: alturaCampoAssinatura }]}>
 
       {Platform.OS === 'web' ? (
         <View style={styles.webSignatureFallback}>
@@ -1129,7 +1182,7 @@ const renderAssinaturaAba = () => (
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, abaAtiva === 'assinatura' && styles.tabActive]}
-          onPress={() => setAbaAtiva('assinatura')}
+          onPress={abrirAbaAssinatura}
         >
           <Text style={[styles.tabText, abaAtiva === 'assinatura' && styles.tabTextActive]}>
             ✍️ Assinatura
@@ -1275,6 +1328,7 @@ const renderAssinaturaAba = () => (
                     {[empresaConsultor.endereco, empresaConsultor.numero]
                       .filter(Boolean)
                       .join(', ') || 'Endereco nao informado'}
+                    {empresaConsultor.bairro ? ` - ${empresaConsultor.bairro}` : ''}
                     {empresaConsultor.cidade || empresaConsultor.estado
                       ? ` - ${empresaConsultor.cidade}/${empresaConsultor.estado}`
                       : ''}
@@ -1385,16 +1439,25 @@ const renderAssinaturaAba = () => (
 
 const signatureWebStyle = `
   .m-signature-pad {
+    width: 100%;
+    height: 100%;
     box-shadow: none;
     border: 1px solid #E9ECEF;
     border-radius: 12px;
   }
   .m-signature-pad--body {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     border: none;
   }
   .m-signature-pad--body canvas {
     width: 100%;
     height: 100%;
+  }
+  .m-signature-pad--footer {
+    display: none;
   }
 `;
 
@@ -1621,7 +1684,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   signatureContainer: {
-    height: 250,
+    width: '100%',
+    maxHeight: 380,
     marginBottom: 16,
   },
   signature: {

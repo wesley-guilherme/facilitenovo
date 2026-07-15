@@ -30,16 +30,18 @@ export default function CampoDescricao({
   function inserirTexto(
     texto: string
   ) {
+    const textoAtual = value.trimEnd();
+    const textoSelecionado = texto.trim();
 
-    if (!value.trim()) {
+    if (!textoAtual) {
 
-      onChange(texto);
+      onChange(textoSelecionado);
 
       return;
     }
 
     onChange(
-      `${value}\n\n${texto}`
+      `${textoAtual}\n${textoSelecionado}`
     );
 
   }

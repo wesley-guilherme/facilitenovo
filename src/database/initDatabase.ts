@@ -387,6 +387,7 @@ await db.execAsync(`
     nome TEXT,
     endereco TEXT,
     numero TEXT,
+    bairro TEXT,
     cidade TEXT,
     estado TEXT,
     celular TEXT,
@@ -397,6 +398,23 @@ await db.execAsync(`
     updated_at TEXT
   );
 `);
+
+const empresaConsultorInfo = await db.getAllAsync(
+  'PRAGMA table_info(empresa_consultor)'
+);
+
+const possuiBairroEmpresaConsultor = (empresaConsultorInfo as any[]).some(
+  (coluna) => coluna.name === 'bairro'
+);
+
+if (!possuiBairroEmpresaConsultor) {
+  await db.execAsync(`
+    ALTER TABLE empresa_consultor
+    ADD COLUMN bairro TEXT DEFAULT ''
+  `);
+
+  console.log('Coluna bairro adicionada em empresa_consultor');
+}
 
 const textoExistente =
   await db.getFirstAsync(
@@ -475,6 +493,7 @@ if (!empresaConsultorExistente) {
       nome,
       endereco,
       numero,
+      bairro,
       cidade,
       estado,
       celular,
@@ -482,9 +501,10 @@ if (!empresaConsultorExistente) {
       email,
       mensagem_formulario,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '1',
+      '',
       '',
       '',
       '',

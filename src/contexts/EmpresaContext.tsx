@@ -22,6 +22,7 @@ export type EmpresaConsultor = {
   nome: string;
   endereco: string;
   numero: string;
+  bairro: string;
   cidade: string;
   estado: string;
   celular: string;
@@ -49,6 +50,7 @@ const EMPRESA_INICIAL: EmpresaConsultor = {
   nome: '',
   endereco: '',
   numero: '',
+  bairro: '',
   cidade: '',
   estado: '',
   celular: '',
@@ -106,6 +108,7 @@ export function EmpresaProvider({
         nome: String(dados.nome ?? ''),
         endereco: String(dados.endereco ?? ''),
         numero: String(dados.numero ?? ''),
+        bairro: String(dados.bairro ?? ''),
         cidade: String(dados.cidade ?? ''),
         estado: String(dados.estado ?? ''),
         celular: String(dados.celular ?? ''),

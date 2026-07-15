@@ -7,6 +7,7 @@ export type EmpresaConsultorDB = {
   nome: string;
   endereco: string;
   numero: string;
+  bairro: string;
   cidade: string;
   estado: string;
   celular: string;
@@ -59,6 +60,7 @@ async carregar(): Promise<EmpresaConsultorDB | null> {
         nome = ?,
         endereco = ?,
         numero = ?,
+        bairro = ?,
         cidade = ?,
         estado = ?,
         celular = ?,

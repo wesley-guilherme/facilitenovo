@@ -63,6 +63,7 @@ export default function EmpresaConsultorScreen() {
   const [nome, setNome] = useState(empresa?.nome || '');
   const [endereco, setEndereco] = useState(empresa?.endereco || '');
   const [numero, setNumero] = useState(empresa?.numero || '');
+  const [bairro, setBairro] = useState(empresa?.bairro || '');
   const [cidade, setCidade] = useState(empresa?.cidade || '');
   const [estado, setEstado] = useState(empresa?.estado || '');
   const [celular, setCelular] = useState(empresa?.celular || '');
@@ -77,6 +78,7 @@ export default function EmpresaConsultorScreen() {
     nome: '',
     endereco: '',
     numero: '',
+    bairro: '',
     cidade: '',
     estado: '',
     celular: '',
@@ -305,6 +307,7 @@ const handleExcluirImagem = (
     const nomeError = nome.trim() === '' ? 'Nome da empresa é obrigatório' : '';
     const enderecoError = endereco.trim() === '' ? 'Endereço é obrigatório' : '';
     const numeroError = numero.trim() === '' ? 'Número é obrigatório' : '';
+    const bairroError = bairro.trim() === '' ? 'Bairro é obrigatório' : '';
     const cidadeError = cidade.trim() === '' ? 'Cidade é obrigatória' : '';
     const estadoError = estado.trim() === '' ? 'Estado é obrigatório' : '';
     const emailError = validarEmail(email);
@@ -317,6 +320,7 @@ const handleExcluirImagem = (
       nome: nomeError,
       endereco: enderecoError,
       numero: numeroError,
+      bairro: bairroError,
       cidade: cidadeError,
       estado: estadoError,
       celular: celularNumeros.length !== 0 && celularNumeros.length !== 11 ? 'Celular deve ter 11 dígitos' : '',
@@ -324,7 +328,7 @@ const handleExcluirImagem = (
       email: emailError,
     });
     
-    if (logoPequenaError || logoMediaError || nomeError || enderecoError || numeroError || cidadeError || estadoError || emailError) {
+    if (logoPequenaError || logoMediaError || nomeError || enderecoError || numeroError || bairroError || cidadeError || estadoError || emailError) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios corretamente');
       return;
     }
@@ -337,6 +341,7 @@ const handleExcluirImagem = (
     nome,
     endereco,
     numero,
+    bairro,
     cidade,
     estado,
     celular,
@@ -360,6 +365,7 @@ const handleExcluirImagem = (
       nome,
       endereco,
       numero,
+      bairro,
       cidade,
       estado,
       celular,
@@ -517,6 +523,21 @@ const handleExcluirImagem = (
                   />
                   {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
                 </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Bairro <Text style={styles.required}>*</Text></Text>
+                <TextInput
+                  style={[styles.input, errors.bairro ? styles.inputError : null]}
+                  placeholder="Bairro"
+                  placeholderTextColor="#ADB5BD"
+                  value={bairro}
+                  onChangeText={(text) => {
+                    setBairro(text);
+                    setErrors(prev => ({ ...prev, bairro: text.trim() === '' ? 'Bairro é obrigatório' : '' }));
+                  }}
+                />
+                {errors.bairro ? <Text style={styles.errorText}>{errors.bairro}</Text> : null}
               </View>
 
               <View style={styles.row}>
