@@ -1,112 +1,164 @@
 /**
  * TELA: RelatoriosScreen
- * 
- * FUNÇÃO:
- * Exibe opções de relatórios disponíveis para o consultor:
- * - Clientes da Rota
- * - Visita de Clientes Por Data
- * - Clientes Que Não Visita a (n) dias
- * - Clientes Mais Visitados
- * - Clientes Menos Visitados
- * 
- * Cada opção ao ser clicada exibe o relatório correspondente.
+ *
+ * Exibe os relatorios disponiveis e renderiza a pre-visualizacao no
+ * layout padrao do Facilite.
  */
 
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
+  ActivityIndicator,
   Alert,
-  StatusBar,
-  TextInput,
   Modal,
-  Dimensions,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
+import { useEmpresa } from '../contexts/EmpresaContext';
+import RelatorioDocumento from '../components/Relatorios/RelatorioDocumento';
+import {
+  carregarRelatorio,
+  RelatorioDados,
+  RelatorioId,
+} from '../services/relatoriosService';
+import { compartilharRelatorioClientesRotaPdf } from '../services/relatorioPdfService';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
+const LINHAS_POR_PAGINA = 24;
 
-type RelatoriosScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Relatorios'>;
+type RelatoriosScreenNavigationProp = DrawerNavigationProp<
+  RootDrawerParamList,
+  'Relatorios'
+>;
 
 type RelatorioItem = {
-  id: string;
+  id: RelatorioId;
   titulo: string;
   icone: string;
   cor: string;
 };
 
 const RELATORIOS: RelatorioItem[] = [
-  { id: '1', titulo: 'Clientes da Rota', icone: '🗺️', cor: '#2463EB' },
-  { id: '2', titulo: 'Visita de Clientes Por Data', icone: '📅', cor: '#34C759' },
-  { id: '3', titulo: 'Clientes Que Não Visita', icone: '⚠️', cor: '#FF3B30' },
-  { id: '4', titulo: 'Clientes Mais Visitados', icone: '📈', cor: '#FF9500' },
-  { id: '5', titulo: 'Clientes Menos Visitados', icone: '📉', cor: '#5856D6' },
+  { id: 'clientes_rota', titulo: 'Clientes da Rota', icone: '🗺️', cor: '#2463EB' },
+  { id: 'visitas_data', titulo: 'Visita de Clientes Por Data', icone: '📅', cor: '#34C759' },
+  { id: 'clientes_sem_visita', titulo: 'Clientes Que Não Visita', icone: '⚠️', cor: '#FF3B30' },
+  { id: 'clientes_mais_visitados', titulo: 'Clientes Mais Visitados', icone: '📈', cor: '#FF9500' },
+  { id: 'clientes_menos_visitados', titulo: 'Clientes Menos Visitados', icone: '📉', cor: '#5856D6' },
 ];
 
 export default function RelatoriosScreen() {
   const navigation = useNavigation<RelatoriosScreenNavigationProp>();
-  const [modalVisible, setModalVisible] = useState(false);
+  const { empresa } = useEmpresa();
+  const [modalDiasVisible, setModalDiasVisible] = useState(false);
+  const [modalRelatorioVisible, setModalRelatorioVisible] = useState(false);
   const [dias, setDias] = useState('');
   const [selectedRelatorio, setSelectedRelatorio] = useState<RelatorioItem | null>(null);
+  const [relatorioDados, setRelatorioDados] = useState<RelatorioDados | null>(null);
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [compartilhandoPdf, setCompartilhandoPdf] = useState(false);
+
+  const totalPaginas = relatorioDados
+    ? Math.max(Math.ceil(relatorioDados.linhas.length / LINHAS_POR_PAGINA), 1)
+    : 1;
 
   const handleVoltar = () => {
     navigation.goBack();
   };
 
-  // Modal para o relatório "Clientes Que Não Visita a (n) dias"
-  const handleRelatorioDias = (item: RelatorioItem) => {
-    setSelectedRelatorio(item);
-    setModalVisible(true);
+  const abrirRelatorio = async (
+    item: RelatorioItem,
+    opcoes?: { dias?: number }
+  ) => {
+    setLoading(true);
+
+    try {
+      const dados = await carregarRelatorio(item.id, opcoes);
+      setRelatorioDados(dados);
+      setSelectedRelatorio(item);
+      setPaginaAtual(1);
+      setModalRelatorioVisible(true);
+    } catch (error) {
+      console.error('Erro ao carregar relatorio:', error);
+      Alert.alert('Erro', 'Nao foi possivel carregar o relatorio.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRelatorioPress = (item: RelatorioItem) => {
+    if (item.id === 'clientes_sem_visita') {
+      setSelectedRelatorio(item);
+      setModalDiasVisible(true);
+      return;
+    }
+
+    abrirRelatorio(item);
   };
 
   const handleConfirmarDias = () => {
     const numeroDias = parseInt(dias, 10);
+
     if (isNaN(numeroDias) || numeroDias <= 0) {
-      Alert.alert('Erro', 'Digite um número de dias válido');
+      Alert.alert('Erro', 'Digite um numero de dias valido');
       return;
     }
-    setModalVisible(false);
-    Alert.alert(
-      'Relatório',
-      `Clientes que não visitou nos últimos ${numeroDias} dias\n\n(Implementar consulta ao banco de dados)`
-    );
-    setDias('');
-  };
 
-  const handleRelatorioPress = (item: RelatorioItem) => {
-    if (item.id === '3') {
-      handleRelatorioDias(item);
-    } else {
-      Alert.alert(
-        'Relatório',
-        `${item.icone} ${item.titulo}\n\n(Implementar consulta ao banco de dados)`
-      );
+    if (!selectedRelatorio) {
+      return;
     }
+
+    setModalDiasVisible(false);
+    setDias('');
+    abrirRelatorio(selectedRelatorio, { dias: numeroDias });
   };
 
-  const getCorPorId = (id: string) => {
-    switch (id) {
-      case '1': return '#2463EB';
-      case '2': return '#34C759';
-      case '3': return '#FF3B30';
-      case '4': return '#FF9500';
-      case '5': return '#5856D6';
-      default: return '#2463EB';
+  const fecharRelatorio = () => {
+    setModalRelatorioVisible(false);
+    setRelatorioDados(null);
+    setPaginaAtual(1);
+    setCompartilhandoPdf(false);
+  };
+
+  const irPaginaAnterior = () => {
+    setPaginaAtual((pagina) => Math.max(pagina - 1, 1));
+  };
+
+  const irProximaPagina = () => {
+    setPaginaAtual((pagina) => Math.min(pagina + 1, totalPaginas));
+  };
+
+  const compartilharClientesRota = async () => {
+    if (!relatorioDados || selectedRelatorio?.id !== 'clientes_rota') {
+      return;
+    }
+
+    try {
+      setCompartilhandoPdf(true);
+      await compartilharRelatorioClientesRotaPdf(
+        relatorioDados,
+        empresa.logoPequena
+      );
+    } catch (error) {
+      console.error('Erro ao compartilhar relatorio PDF:', error);
+      Alert.alert('Erro', 'Nao foi possivel gerar o PDF do relatorio.');
+    } finally {
+      setCompartilhandoPdf(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
-      
-      {/* Cabeçalho com botão Voltar */}
+
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 8 }]}>
         <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
@@ -115,53 +167,51 @@ export default function RelatoriosScreen() {
         <View style={styles.placeholderRight} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {RELATORIOS.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={[styles.card, { borderLeftColor: getCorPorId(item.id), borderLeftWidth: 4 }]}
+            style={[styles.card, { borderLeftColor: item.cor }]}
             onPress={() => handleRelatorioPress(item)}
             activeOpacity={0.7}
+            disabled={loading}
           >
             <View style={styles.cardContent}>
-              <View style={[styles.iconContainer, { backgroundColor: getCorPorId(item.id) + '20' }]}>
+              <View style={[styles.iconContainer, { backgroundColor: `${item.cor}20` }]}>
                 <Text style={styles.icon}>{item.icone}</Text>
               </View>
               <View style={styles.textContainer}>
                 <Text style={styles.titulo}>{item.titulo}</Text>
-                {item.id === '3' && (
-                  <Text style={styles.subtitulo}>
-                    Definir quantidade de dias
-                  </Text>
+                {item.id === 'clientes_sem_visita' && (
+                  <Text style={styles.subtitulo}>Definir quantidade de dias</Text>
                 )}
               </View>
-              <Text style={styles.arrow}>→</Text>
+              {loading && selectedRelatorio?.id === item.id ? (
+                <ActivityIndicator color={item.cor} />
+              ) : (
+                <Text style={styles.arrow}>→</Text>
+              )}
             </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Modal para definir número de dias */}
       <Modal
         animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        transparent
+        visible={modalDiasVisible}
+        onRequestClose={() => setModalDiasVisible(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={() => setModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Clientes Que Não Visita</Text>
             <Text style={styles.modalSubtitle}>
               Informe a quantidade de dias para análise
             </Text>
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Ex: 30"
@@ -169,20 +219,20 @@ export default function RelatoriosScreen() {
               keyboardType="numeric"
               value={dias}
               onChangeText={setDias}
-              autoFocus={true}
+              autoFocus
             />
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => {
-                  setModalVisible(false);
+                  setModalDiasVisible(false);
                   setDias('');
                 }}
               >
                 <Text style={styles.modalButtonCancelText}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
                 onPress={handleConfirmarDias}
@@ -191,7 +241,87 @@ export default function RelatoriosScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        visible={modalRelatorioVisible}
+        onRequestClose={fecharRelatorio}
+      >
+        <SafeAreaView style={styles.previewContainer}>
+          <View style={styles.previewHeader}>
+            <Text style={styles.previewTitle}>
+              {relatorioDados?.titulo || selectedRelatorio?.titulo || 'Relatório'}
+            </Text>
+            {selectedRelatorio?.id === 'clientes_rota' && (
+              <TouchableOpacity
+                style={[
+                  styles.pdfButton,
+                  compartilhandoPdf && styles.buttonDisabled,
+                ]}
+                onPress={compartilharClientesRota}
+                disabled={compartilhandoPdf}
+              >
+                <Text style={styles.pdfButtonText}>
+                  {compartilhandoPdf ? 'Gerando...' : 'PDF'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.closeButton} onPress={fecharRelatorio}>
+              <Text style={styles.closeButtonText}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={styles.previewScroll}
+            contentContainerStyle={styles.previewScrollContent}
+            horizontal
+            showsHorizontalScrollIndicator
+          >
+            {relatorioDados ? (
+              <RelatorioDocumento
+                titulo={relatorioDados.titulo}
+                colunas={relatorioDados.colunas}
+                linhas={relatorioDados.linhas}
+                logoUri={empresa.logoPequena}
+                paginaAtual={paginaAtual}
+                linhasPorPagina={LINHAS_POR_PAGINA}
+                geradoEm={relatorioDados.geradoEm}
+              />
+            ) : (
+              <ActivityIndicator color="#2463EB" />
+            )}
+          </ScrollView>
+
+          <View style={styles.paginationBar}>
+            <TouchableOpacity
+              style={[
+                styles.paginationButton,
+                paginaAtual <= 1 && styles.paginationButtonDisabled,
+              ]}
+              onPress={irPaginaAnterior}
+              disabled={paginaAtual <= 1}
+            >
+              <Text style={styles.paginationButtonText}>Anterior</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.paginationText}>
+              Página {paginaAtual}/{totalPaginas}
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.paginationButton,
+                paginaAtual >= totalPaginas && styles.paginationButtonDisabled,
+              ]}
+              onPress={irProximaPagina}
+              disabled={paginaAtual >= totalPaginas}
+            >
+              <Text style={styles.paginationButtonText}>Próxima</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -235,13 +365,9 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderLeftWidth: 4,
     borderWidth: 1,
     borderColor: '#E9ECEF',
     overflow: 'hidden',
@@ -280,7 +406,6 @@ const styles = StyleSheet.create({
     color: '#6C757D',
     marginLeft: 12,
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -288,15 +413,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: '80%',
+    width: '82%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 22,
   },
   modalTitle: {
     fontSize: 18,
@@ -313,7 +433,7 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     backgroundColor: '#F8F9FC',
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E9ECEF',
     paddingHorizontal: 16,
@@ -330,7 +450,7 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
   },
   modalButtonCancel: {
@@ -352,5 +472,87 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  previewContainer: {
+    flex: 1,
+    backgroundColor: '#E9EEF7',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DDE3EE',
+  },
+  previewTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginRight: 12,
+  },
+  closeButton: {
+    backgroundColor: '#2463EB',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  pdfButton: {
+    backgroundColor: '#1769AA',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  pdfButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  closeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  previewScroll: {
+    flex: 1,
+  },
+  previewScrollContent: {
+    padding: 16,
+    alignItems: 'flex-start',
+  },
+  paginationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#DDE3EE',
+  },
+  paginationButton: {
+    backgroundColor: '#1769AA',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  paginationButtonDisabled: {
+    opacity: 0.45,
+  },
+  paginationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  paginationText: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
