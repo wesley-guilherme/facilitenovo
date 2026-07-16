@@ -376,8 +376,8 @@ const carregarDados = async () => {
               <div><div class="label">Data da visita</div><div class="value">${escaparHtml(formatarDataBR(visita.data_visita))}</div></div>
               <div><div class="label">Protocolo de atendimento</div><div class="value">${escaparHtml(visita.protocolo_atendimento || 'Nao informado')}</div></div>
               <div><div class="label">Solicitante</div><div class="value">${escaparHtml(visita.solicitante || 'Nao informado')}</div></div>
-              <div><div class="label">Horario de inicio</div><div class="value">${escaparHtml(visita.hora_inicio || '--:--')}</div></div>
-              <div><div class="label">Horario de termino</div><div class="value">${escaparHtml(visita.hora_termino || '--:--')}</div></div>
+              <div><div class="label">Horário de Início</div><div class="value">${escaparHtml(visita.hora_inicio || '--:--')}</div></div>
+              <div><div class="label">Horário de Término</div><div class="value">${escaparHtml(visita.hora_termino || '--:--')}</div></div>
             </section>
             <section class="section"><div class="rule"></div><div class="section-title">DESCRIÇÃO DO ATENDIMENTO</div><div class="rule"></div></section>
             <section class="description">
@@ -678,8 +678,8 @@ const carregarDados = async () => {
               ['Data da visita', formatarDataBR(visita.data_visita)],
               ['Protocolo de atendimento', visita.protocolo_atendimento || 'Nao informado'],
               ['Solicitante', visita.solicitante || 'Nao informado'],
-              ['Horario de inicio', visita.hora_inicio || '--:--'],
-              ['Horario de termino', visita.hora_termino || '--:--'],
+              ['Horário de Início', visita.hora_inicio || '--:--'],
+              ['Horário de Término', visita.hora_termino || '--:--'],
             ].map(([label, value]) => (
               <View key={label} style={styles.captureInfoItem}>
                 <Text style={styles.captureInfoLabel}>{label}</Text>

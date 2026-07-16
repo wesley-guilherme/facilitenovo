@@ -44,6 +44,15 @@ const CONFIG_INICIAL = {
   notificacoesAtivas: true,
 };
 
+const TABELAS_BACKUP = [
+  'empresas',
+  'visitas',
+  'configuracoes',
+  'textos_predefinidos',
+  'consultor',
+  'empresa_consultor',
+] as const;
+
 export default function ConfiguracoesScreen() {
   const navigation = useNavigation<ConfiguracoesScreenNavigationProp>();  
   const [diasAviso, setDiasAviso] = useState(CONFIG_INICIAL.diasAviso);
@@ -145,10 +154,9 @@ export default function ConfiguracoesScreen() {
     setLoading(true);
     try {
       // 1. Buscar todos os dados do SQLite
-      const tabelas = ['os_assinadas', 'consultores', 'empresas'];
       const backupData: any = {};
       
-      for (const tabela of tabelas) {
+      for (const tabela of TABELAS_BACKUP) {
         try {
           const dados = await db.getAllAsync(`SELECT * FROM ${tabela}`);
           backupData[tabela] = dados;
@@ -225,11 +233,13 @@ export default function ConfiguracoesScreen() {
             onPress: async () => {
               try {
                 // 4. Restaurar cada tabela
-                for (const [tabela, dados] of Object.entries(backupData)) {
-                  if (Array.isArray(dados) && dados.length > 0) {
+                for (const tabela of TABELAS_BACKUP) {
+                  const dados = backupData[tabela];
+
+                  if (Array.isArray(dados)) {
                     try {
                       await db.execAsync(`DELETE FROM ${tabela}`);
-                      
+
                       for (const item of dados as any[]) {
                         const colunas = Object.keys(item).join(', ');
                         const valores = Object.values(item).map((v: any) => {

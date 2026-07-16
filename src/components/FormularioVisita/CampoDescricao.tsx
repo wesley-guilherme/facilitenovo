@@ -16,11 +16,13 @@ type Props = {
   onChange: (
     texto: string
   ) => void;
+  onFocus?: () => void;
 };
 
 export default function CampoDescricao({
   value,
   onChange,
+  onFocus,
 }: Props) {
 
   const [modalVisible,
@@ -75,6 +77,7 @@ export default function CampoDescricao({
         numberOfLines={8}
         value={value}
         onChangeText={onChange}
+        onFocus={onFocus}
         placeholder="Descreva os serviços executados..."
         style={styles.input}
       />

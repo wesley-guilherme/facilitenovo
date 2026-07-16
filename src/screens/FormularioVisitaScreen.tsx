@@ -29,7 +29,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
@@ -59,12 +59,16 @@ type FormularioVisitaScreenNavigationProp = DrawerNavigationProp<RootDrawerParam
 export default function FormularioVisitaScreen() {
   const navigation = useNavigation<FormularioVisitaScreenNavigationProp>();
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const { consultor } = useConsultor();
   const { empresa: empresaConsultor } = useEmpresa();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const telaEmPaisagem = windowWidth > windowHeight;
+  const chaveAssinatura = telaEmPaisagem
+    ? `assinatura-paisagem-${Math.round(windowWidth)}x${Math.round(windowHeight)}`
+    : `assinatura-retrato-${Math.round(windowWidth)}x${Math.round(windowHeight)}`;
   const alturaCampoAssinatura = telaEmPaisagem
-    ? Math.min(Math.max(windowHeight - 230, 220), 360)
+    ? Math.min(Math.max(windowHeight - 260, 170), 260)
     : Math.min(Math.max(windowWidth * 0.62, 300), 380);
 
   
@@ -79,8 +83,10 @@ export default function FormularioVisitaScreen() {
   const [dataVisita, setDataVisita] = useState(new Date().toLocaleDateString('pt-BR'));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
+  const [dataPickerTemp, setDataPickerTemp] = useState(new Date());
   const [showHoraPicker, setShowHoraPicker] = useState(false);
   const [horaSelecionada, setHoraSelecionada] = useState(new Date());
+  const [horaPickerTemp, setHoraPickerTemp] = useState(new Date());
   const [horaInicio, setHoraInicio] = useState('');
   const [horaTermino, setHoraTermino] = useState('');
   const [tipoHoraAtual, setTipoHoraAtual] = useState< 'inicio' | 'termino' >('inicio');
@@ -91,9 +97,11 @@ export default function FormularioVisitaScreen() {
   const [showFormularioFinal, setShowFormularioFinal] = useState(false);
   const [compartilhandoPdf, setCompartilhandoPdf] = useState(false);
   const [compartilhandoPng, setCompartilhandoPng] = useState(false);
+  const [scrollAssinaturaAtivo, setScrollAssinaturaAtivo] = useState(true);
   
   const signatureRef = useRef<any>(null);
-  const formularioDocumentoRef = useRef<View>(null);
+  const infoScrollRef = useRef<ScrollView>(null);
+  const formularioDocumentoPngRef = useRef<View>(null);
   const formularioJaSalvo = !!ultimaVisita;
   const textoAcaoFormulario = formularioJaSalvo ? 'Atualizar' : 'Salvar';
   const textoBotaoPrincipal = abaAtiva === 'info' ? 'Próximo' : textoAcaoFormulario;
@@ -166,6 +174,7 @@ export default function FormularioVisitaScreen() {
 
   } else {
 
+    setDataPickerTemp(dataSelecionada);
     setShowDatePicker(true);
 
   }
@@ -178,7 +187,10 @@ export default function FormularioVisitaScreen() {
   ) => {
 
     if (Platform.OS === 'ios') {
-      setShowDatePicker(false);
+      if (selectedDate) {
+        setDataPickerTemp(selectedDate);
+      }
+      return;
     }
 
     if (!selectedDate)
@@ -192,6 +204,12 @@ export default function FormularioVisitaScreen() {
       )
     );
 
+  };
+
+  const confirmarDataIos = () => {
+    setDataSelecionada(dataPickerTemp);
+    setDataVisita(dataPickerTemp.toLocaleDateString('pt-BR'));
+    setShowDatePicker(false);
   };
 
   //Selecionar Hora
@@ -229,6 +247,10 @@ export default function FormularioVisitaScreen() {
       tipo
     );
 
+    setHoraPickerTemp(
+      horaSelecionada
+    );
+
     setShowHoraPicker(
       true
     );
@@ -243,14 +265,11 @@ export default function FormularioVisitaScreen() {
   selectedDate?: Date
 ) => {
 
-  if (
-    Platform.OS === 'ios'
-  ) {
-
-    setShowHoraPicker(
-      false
-    );
-
+  if (Platform.OS === 'ios') {
+    if (selectedDate) {
+      setHoraPickerTemp(selectedDate);
+    }
+    return;
   }
 
   if (
@@ -323,6 +342,39 @@ export default function FormularioVisitaScreen() {
   );
 
 };
+
+  const confirmarHoraIos = () => {
+    const selectedDate = horaPickerTemp;
+    const hora =
+      selectedDate.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+    if (tipoHoraAtual === 'termino' && horaInicio) {
+      const inicio = horaInicio.split(':').map(Number);
+      const inicioDate = new Date();
+
+      inicioDate.setHours(inicio[0], inicio[1]);
+
+      if (selectedDate < inicioDate) {
+        Alert.alert(
+          'Aviso',
+          'O horário final não pode ser menor que o horário inicial'
+        );
+        return;
+      }
+    }
+
+    if (tipoHoraAtual === 'termino') {
+      setHoraTermino(hora);
+    } else {
+      setHoraInicio(hora);
+    }
+
+    setHoraSelecionada(selectedDate);
+    setShowHoraPicker(false);
+  };
 
 const limparDadosDaVisita = () => {
   setProtocoloAtendimento('');
@@ -798,8 +850,8 @@ const visita =
             <div><div class="label">Data da visita</div><div class="value">${escaparHtml(dataVisita)}</div></div>
             <div><div class="label">Protocolo de atendimento</div><div class="value">${escaparHtml(protocoloAtendimento.trim() || 'Nao informado')}</div></div>
             <div><div class="label">Solicitante</div><div class="value">${escaparHtml(solicitante || 'Nao informado')}</div></div>
-            <div><div class="label">Horario de inicio</div><div class="value">${escaparHtml(horaInicio || '--:--')}</div></div>
-            <div><div class="label">Horario de termino</div><div class="value">${escaparHtml(horaTermino || '--:--')}</div></div>
+            <div><div class="label">Horário de Início</div><div class="value">${escaparHtml(horaInicio || '--:--')}</div></div>
+            <div><div class="label">Horário de Término</div><div class="value">${escaparHtml(horaTermino || '--:--')}</div></div>
           </section>
           <section class="section">
             <div class="rule"></div>
@@ -880,12 +932,12 @@ const visita =
         return;
       }
 
-      if (!formularioDocumentoRef.current) {
+      if (!formularioDocumentoPngRef.current) {
         Alert.alert('Erro', 'Formulario ainda nao esta pronto para compartilhar');
         return;
       }
 
-      const capturaUri = await captureRef(formularioDocumentoRef, {
+      const capturaUri = await captureRef(formularioDocumentoPngRef, {
         format: 'png',
         quality: 1,
         result: 'tmpfile',
@@ -941,12 +993,16 @@ const visita =
     setAssinatura(null);
   };
 
+  const scrollInfoParaCampo = (_y: number) => {};
+
   // Aba 1: Informações
   const renderInfoAba = () => (
     <ScrollView 
+      ref={infoScrollRef}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
     >
       {/* Logo da Empresa */}
       <View style={styles.logoSection}>
@@ -987,6 +1043,7 @@ const visita =
         </Text>
         <TextInput
           style={styles.input}
+          onFocus={() => scrollInfoParaCampo(220)}
           placeholder="Numero do protocolo, se houver"
           placeholderTextColor="#ADB5BD"
           value={protocoloAtendimento}
@@ -997,7 +1054,8 @@ const visita =
       {/* Solicitante */}
       <CampoSolicitante
         value={solicitante}
-  onChange={setSolicitante}
+        onChange={setSolicitante}
+        onFocus={() => scrollInfoParaCampo(300)}
       />
 
       {/* Data da Visita */}
@@ -1009,6 +1067,7 @@ const visita =
           </Text>
           <TextInput
             style={styles.input}
+            onFocus={() => scrollInfoParaCampo(380)}
             placeholder="DD/MM/AAAA"
             value={dataVisita}
             onChangeText={setDataVisita}
@@ -1064,6 +1123,7 @@ const visita =
       <CampoDescricao
         value={descricao}
         onChange={setDescricao}
+        onFocus={() => scrollInfoParaCampo(560)}
       />
     </ScrollView>
   );
@@ -1071,7 +1131,16 @@ const visita =
   // Aba 2: Assinatura
 
 const renderAssinaturaAba = () => (
-  <View style={styles.assinaturaContainer}>
+  <ScrollView
+    style={styles.assinaturaScroll}
+    contentContainerStyle={[
+      styles.assinaturaContainer,
+      telaEmPaisagem && styles.assinaturaContainerPaisagem,
+    ]}
+    keyboardShouldPersistTaps="handled"
+    scrollEnabled={scrollAssinaturaAtivo}
+    showsVerticalScrollIndicator
+  >
     <Text style={styles.assinaturaTitle}>
       Assinatura do Cliente
     </Text>
@@ -1100,6 +1169,7 @@ const renderAssinaturaAba = () => (
         </View>
       ) : (
         <SignatureScreen
+          key={chaveAssinatura}
           ref={signatureRef}
           onOK={handleSignature}
           onEmpty={() =>
@@ -1108,14 +1178,22 @@ const renderAssinaturaAba = () => (
               'Peça para o cliente assinar antes de salvar'
             )
           }
-          onEnd={() =>
-            signatureRef.current?.readSignature()
-          }
+          onBegin={() => setScrollAssinaturaAtivo(false)}
+          onEnd={() => {
+            setScrollAssinaturaAtivo(true);
+            signatureRef.current?.readSignature();
+          }}
           autoClear={false}
           descriptionText=""
           clearText="Limpar"
           confirmText="Confirmar"
-          webStyle={signatureWebStyle}
+          rotated={telaEmPaisagem}
+          scrollable={false}
+          webStyle={`${signatureWebStyle}${telaEmPaisagem ? signatureLandscapeOutputFix : ''}`}
+          webviewProps={{
+            scrollEnabled: false,
+            bounces: false,
+          }}
           style={styles.signature}
         />
       )}
@@ -1146,10 +1224,134 @@ const renderAssinaturaAba = () => (
       </View>
     )}
 
-  </View>
+  </ScrollView>
 );
 
+  const renderFormularioAssinado = (
+    opcoes?: {
+      ref?: React.RefObject<View | null>;
+      fixoParaPng?: boolean;
+    }
+  ) => (
+    <View
+      ref={opcoes?.ref}
+      collapsable={false}
+      style={[
+        styles.osDocument,
+        opcoes?.fixoParaPng && styles.osDocumentPng,
+      ]}
+    >
+      <View style={styles.osTopBar} />
 
+      <View style={styles.osHeader}>
+        <View style={styles.osBrandColumn}>
+          <View style={styles.osLogoBox}>
+            {empresaConsultor.logoPequena ? (
+              <Image source={{ uri: empresaConsultor.logoPequena }} style={styles.osLogoSmall} />
+            ) : (
+              <View style={styles.osTestLogo}>
+                <View style={styles.osTestLogoIcon}>
+                  <Text style={styles.osTestLogoIconText}>+</Text>
+                </View>
+                <View>
+                  <Text style={styles.osTestLogoName}>FACILITE</Text>
+                  <Text style={styles.osTestLogoSub}>CONSULTORIA</Text>
+                </View>
+              </View>
+            )}
+          </View>
+          <View style={styles.osContactBox}>
+            {!!empresaConsultor.telefone && <Text style={styles.osContactText}>Tel: {empresaConsultor.telefone}</Text>}
+            {!!empresaConsultor.celular && <Text style={styles.osContactText}>Cel: {empresaConsultor.celular}</Text>}
+            {!!empresaConsultor.email && <Text style={styles.osContactText}>{empresaConsultor.email}</Text>}
+          </View>
+        </View>
+
+        <View style={styles.osCompanyHeader}>
+          <Text style={styles.osCompanyName}>{empresaConsultor.nome || 'Empresa do Consultor'}</Text>
+          <Text style={styles.osCompanyAddress}>
+            {[empresaConsultor.endereco, empresaConsultor.numero].filter(Boolean).join(', ') || 'Endereco nao informado'}
+            {empresaConsultor.bairro ? ` - ${empresaConsultor.bairro}` : ''}
+            {empresaConsultor.cidade || empresaConsultor.estado ? ` - ${empresaConsultor.cidade}/${empresaConsultor.estado}` : ''}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.osProtocolCard}>
+        <Text style={styles.osProtocolCaption}>EMPRESA ATENDIDA</Text>
+        <Text style={styles.osProtocolValue}>{empresaSelecionada?.nome_fantasia || 'Nao informada'}</Text>
+      </View>
+
+      <View style={styles.osInfoGrid}>
+        <View style={styles.osInfoItem}>
+          <Text style={styles.osInfoLabel}>Consultor</Text>
+          <Text style={styles.osInfoValue}>{consultor?.nome || 'Nao informado'}</Text>
+        </View>
+        <View style={styles.osInfoItem}>
+          <Text style={styles.osInfoLabel}>Data da visita</Text>
+          <Text style={styles.osInfoValue}>{dataVisita}</Text>
+        </View>
+        <View style={styles.osInfoItem}>
+          <Text style={styles.osInfoLabel}>Protocolo de atendimento</Text>
+          <Text style={styles.osInfoValue}>{protocoloAtendimento.trim() || 'Nao informado'}</Text>
+        </View>
+        <View style={styles.osInfoItem}>
+          <Text style={styles.osInfoLabel}>Solicitante</Text>
+          <Text style={styles.osInfoValue}>{solicitante || 'Nao informado'}</Text>
+        </View>
+        <View style={styles.osInfoItem}>
+          <Text style={styles.osInfoLabel}>Horário de Início</Text>
+          <Text style={styles.osInfoValue}>{horaInicio || '--:--'}</Text>
+        </View>
+        <View style={styles.osInfoItem}>
+          <Text style={styles.osInfoLabel}>Horário de Término</Text>
+          <Text style={styles.osInfoValue}>{horaTermino || '--:--'}</Text>
+        </View>
+      </View>
+
+      <View style={styles.osSectionHeader}>
+        <View style={styles.osSectionRule} />
+        <Text style={styles.osSectionTitle}>DESCRICAO DO ATENDIMENTO</Text>
+        <View style={styles.osSectionRule} />
+      </View>
+
+      <View style={styles.osDescriptionBox}>
+        {empresaConsultor.logoMedia ? (
+          <Image source={{ uri: empresaConsultor.logoMedia }} style={styles.osWatermark} />
+        ) : (
+          <View style={styles.osTestWatermark}>
+            <View style={styles.osTestWatermarkIcon}>
+              <Text style={styles.osTestWatermarkIconText}>+</Text>
+            </View>
+            <View>
+              <Text style={styles.osTestWatermarkName}>FACILITE</Text>
+              <Text style={styles.osTestWatermarkSub}>CONSULTORIA</Text>
+            </View>
+          </View>
+        )}
+        <Text style={styles.osDescriptionText}>{descricao}</Text>
+      </View>
+
+      <View style={styles.osMessageBox}>
+        <Text style={styles.osMessageText}>
+          {empresaConsultor.mensagemFormulario ||
+            'O cliente declara que os procedimentos acima relacionados foram executados e concorda com as informacoes descritas neste formulario.'}
+        </Text>
+      </View>
+
+      <View style={styles.osSignatureArea}>
+        <View style={styles.osSignatureBox}>
+          {assinatura && Platform.OS === 'web' && assinatura.startsWith('data:image/svg') ? (
+            <Text style={styles.osSignatureFallbackText}>Assinatura confirmada</Text>
+          ) : assinatura ? (
+            <Image source={{ uri: assinatura }} style={styles.osSignatureImage} />
+          ) : null}
+          <View style={styles.osSignatureLine} />
+          <Text style={styles.osSignatureLabel}>Assinatura do Cliente</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1193,35 +1395,94 @@ const renderAssinaturaAba = () => (
       {/* Conteúdo da aba */}
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + STATUS_BAR_HEIGHT + 60 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
+        behavior="height"
+        keyboardVerticalOffset={0}
       >
         {abaAtiva === 'info' ? renderInfoAba() : renderAssinaturaAba()}
       </KeyboardAvoidingView>
 
       {showDatePicker && (
-        <DateTimePicker
-          value={dataSelecionada}
-          mode="date"
-          display="default"
-          onChange={onChangeData}
-          maximumDate={new Date()}
-        />
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showDatePicker}
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalCard}>
+              <Text style={styles.pickerModalTitle}>Selecionar Data</Text>
+              <DateTimePicker
+                value={dataPickerTemp}
+                mode="date"
+                display="spinner"
+                onChange={onChangeData}
+                maximumDate={new Date()}
+                style={styles.pickerModalPicker}
+              />
+              <View style={styles.pickerModalActions}>
+                <Pressable
+                  style={styles.pickerModalCancelButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.pickerModalCancelText}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.pickerModalConfirmButton}
+                  onPress={confirmarDataIos}
+                >
+                  <Text style={styles.pickerModalConfirmText}>Confirmar</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {showHoraPicker && (
-        <DateTimePicker
-          value={horaSelecionada}
-          mode="time"
-          is24Hour
-          onChange={(event, date) =>
-            onChangeHora(
-              tipoHoraAtual,
-              event,
-              date
-            )
-          }
-        />
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showHoraPicker}
+          onRequestClose={() => setShowHoraPicker(false)}
+        >
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalCard}>
+              <Text style={styles.pickerModalTitle}>
+                {tipoHoraAtual === 'inicio'
+                  ? 'Horário de Início'
+                  : 'Horário de Término'}
+              </Text>
+              <DateTimePicker
+                value={horaPickerTemp}
+                mode="time"
+                display="spinner"
+                is24Hour
+                onChange={(event, date) =>
+                  onChangeHora(
+                    tipoHoraAtual,
+                    event,
+                    date
+                  )
+                }
+                style={styles.pickerModalPicker}
+              />
+              <View style={styles.pickerModalActions}>
+                <Pressable
+                  style={styles.pickerModalCancelButton}
+                  onPress={() => setShowHoraPicker(false)}
+                >
+                  <Text style={styles.pickerModalCancelText}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.pickerModalConfirmButton}
+                  onPress={confirmarHoraIos}
+                >
+                  <Text style={styles.pickerModalConfirmText}>Confirmar</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
 
       <Modal
@@ -1231,7 +1492,12 @@ const renderAssinaturaAba = () => (
         onRequestClose={fecharFormularioFinal}
       >
         <SafeAreaView style={styles.documentModalContainer}>
-          <View style={styles.documentModalHeader}>
+          <View
+            style={[
+              styles.documentModalHeader,
+              { paddingTop: Math.max(insets.top, 12) + 8 },
+            ]}
+          >
             <Text style={styles.documentModalTitle}>
               Formulario Assinado
             </Text>
@@ -1275,8 +1541,6 @@ const renderAssinaturaAba = () => (
             showsVerticalScrollIndicator={false}
           >
             <View
-              ref={formularioDocumentoRef}
-              collapsable={false}
               style={styles.osDocument}
             >
               <View style={styles.osTopBar} />
@@ -1365,11 +1629,11 @@ const renderAssinaturaAba = () => (
                   <Text style={styles.osInfoValue}>{solicitante || 'Nao informado'}</Text>
                 </View>
                 <View style={styles.osInfoItem}>
-                  <Text style={styles.osInfoLabel}>Horario de inicio</Text>
+                  <Text style={styles.osInfoLabel}>Horário de Início</Text>
                   <Text style={styles.osInfoValue}>{horaInicio || '--:--'}</Text>
                 </View>
                 <View style={styles.osInfoItem}>
-                  <Text style={styles.osInfoLabel}>Horario de termino</Text>
+                  <Text style={styles.osInfoLabel}>Horário de Término</Text>
                   <Text style={styles.osInfoValue}>{horaTermino || '--:--'}</Text>
                 </View>
               </View>
@@ -1431,6 +1695,13 @@ const renderAssinaturaAba = () => (
               </View>
             </View>
           </ScrollView>
+
+          <View style={styles.pngCaptureLayer} pointerEvents="none">
+            {renderFormularioAssinado({
+              ref: formularioDocumentoPngRef,
+              fixoParaPng: true,
+            })}
+          </View>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -1459,6 +1730,66 @@ const signatureWebStyle = `
   .m-signature-pad--footer {
     display: none;
   }
+`;
+
+const signatureLandscapeOutputFix = `
+  </style>
+  <script>
+    (function () {
+      function rotateSignatureToHorizontal(url) {
+        var image = new Image();
+        image.onload = function () {
+          var output = document.createElement('canvas');
+          output.width = image.height;
+          output.height = image.width;
+
+          var context = output.getContext('2d');
+          context.translate(output.width, 0);
+          context.rotate(Math.PI / 2);
+          context.drawImage(image, 0, 0);
+
+          window.ReactNativeWebView.postMessage(output.toDataURL('image/png'));
+        };
+        image.src = url;
+      }
+
+      function patchReadSignature() {
+        if (window.__faciliteLandscapeSignaturePatch || typeof window.readSignature !== 'function' || !window.signaturePad) {
+          return;
+        }
+
+        window.__faciliteLandscapeSignaturePatch = true;
+        var originalReadSignature = window.readSignature;
+
+        window.readSignature = function () {
+          if (!window.signaturePad) {
+            originalReadSignature();
+            return;
+          }
+
+          if (window.signaturePad.isEmpty()) {
+            window.ReactNativeWebView.postMessage('EMPTY');
+            return;
+          }
+
+          rotateSignatureToHorizontal(window.signaturePad.toDataURL('image/png'));
+
+          if (window.autoClear === true && window.signaturePad) {
+            window.signaturePad.clear();
+          }
+        };
+      }
+
+      var patchTimer = setInterval(function () {
+        patchReadSignature();
+
+        if (window.__faciliteLandscapeSignaturePatch) {
+          clearInterval(patchTimer);
+        }
+      }, 50);
+    })();
+  </script>
+  <style>
 `;
 
 const styles = StyleSheet.create({
@@ -1525,7 +1856,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 360 : 40,
   },
   logoSection: {
     alignItems: 'center',
@@ -1666,9 +1997,73 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
   },
-  assinaturaContainer: {
+  pickerModalOverlay: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+  },
+  pickerModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
     padding: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  pickerModalPicker: {
+    alignSelf: 'stretch',
+  },
+  pickerModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  pickerModalCancelButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DDE3EE',
+    backgroundColor: '#FFFFFF',
+  },
+  pickerModalConfirmButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#2463EB',
+  },
+  pickerModalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  pickerModalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  assinaturaScroll: {
+    flex: 1,
+  },
+  assinaturaContainer: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  assinaturaContainerPaisagem: {
+    paddingTop: 10,
+    paddingBottom: 72,
   },
   assinaturaTitle: {
     fontSize: 18,
@@ -1759,11 +2154,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E9EEF7',
   },
   documentModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#DDE3EE',
@@ -1772,38 +2166,48 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1A1A1A',
+    textAlign: 'center',
   },
   documentModalActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
   },
   documentShareButton: {
-    minWidth: 62,
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#1769AA',
   },
   documentShareButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
   },
   documentButtonDisabled: {
     opacity: 0.7,
   },
   documentCloseButton: {
-    paddingHorizontal: 14,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#2463EB',
   },
   documentCloseButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
   },
   documentScroll: {
     flex: 1,
@@ -1811,6 +2215,12 @@ const styles = StyleSheet.create({
   documentScrollContent: {
     padding: 16,
     alignItems: 'center',
+  },
+  pngCaptureLayer: {
+    position: 'absolute',
+    left: -10000,
+    top: 0,
+    width: 760,
   },
   osDocument: {
     width: '100%',
@@ -1827,6 +2237,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 18,
     elevation: 3,
+  },
+  osDocumentPng: {
+    width: 760,
+    maxWidth: 760,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   osTopBar: {
     height: 10,

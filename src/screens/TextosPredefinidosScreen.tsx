@@ -22,6 +22,9 @@ import {
   TextInput,
   Dimensions,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -262,12 +265,15 @@ try {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={() => setModalVisible(false)}
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
-          <View style={styles.modalContent}>
+          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+            <View style={styles.modalDismissArea}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {editingTexto ? '✏️ Editar Texto' : '📝 Novo Texto'}
             </Text>
@@ -303,8 +309,11 @@ try {
                 <Text style={styles.modalButtonConfirmText}>Salvar</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -435,11 +444,17 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalDismissArea: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   modalContent: {
-    width: '85%',
+    width: '100%',
+    maxWidth: 420,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 24,

@@ -10,11 +10,13 @@ import {
 type Props = {
   value: string;
   onChange: (texto: string) => void;
+  onFocus?: () => void;
 };
 
 export default function CampoSolicitante({
   value,
   onChange,
+  onFocus,
 }: Props) {
 
   return (
@@ -30,6 +32,7 @@ export default function CampoSolicitante({
         placeholderTextColor="#999"
         value={value}
         onChangeText={onChange}
+        onFocus={onFocus}
         autoCapitalize="words"
         returnKeyType="next"
       />

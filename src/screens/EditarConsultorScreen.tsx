@@ -79,6 +79,8 @@ export default function EditarConsultorScreen() {
     rota: '',
   });
 
+  const scrollParaCampo = (_y: number) => {};
+
   // Função para validar nome (apenas letras)
   const validarNome = (texto: string) => {
     const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s]*$/;
@@ -327,8 +329,8 @@ const handleSelecionarFoto = async () => {
       {/* Conteúdo rolável */}
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + 50 + 20 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
+        behavior="height"
+        keyboardVerticalOffset={0}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
@@ -369,6 +371,7 @@ const handleSelecionarFoto = async () => {
                 </Text>
                 <TextInput
                   ref={nomeInputRef}
+                  onFocus={() => scrollParaCampo(170)}
                   style={[styles.input, errors.nome ? styles.inputError : null]}
                   placeholder="Digite o nome completo"
                   placeholderTextColor="#ADB5BD"
@@ -391,6 +394,7 @@ const handleSelecionarFoto = async () => {
                 </Text>
                 <TextInput
                   ref={emailInputRef}
+                  onFocus={() => scrollParaCampo(260)}
                   style={[styles.input, errors.email ? styles.inputError : null]}
                   placeholder="exemplo@email.com"
                   placeholderTextColor="#ADB5BD"
@@ -415,6 +419,7 @@ const handleSelecionarFoto = async () => {
                 </Text>
                 <TextInput
                   ref={whatsappInputRef}
+                  onFocus={() => scrollParaCampo(350)}
                   style={[styles.input, errors.whatsapp ? styles.inputError : null]}
                   placeholder="(99)-99999-9999"
                   placeholderTextColor="#ADB5BD"
@@ -436,6 +441,7 @@ const handleSelecionarFoto = async () => {
                 </Text>
                 <TextInput
                   ref={rotaInputRef}
+                  onFocus={() => scrollParaCampo(460)}
                   style={[styles.input, errors.rota ? styles.inputError : null]}
                   placeholder="Digite a rota do consultor"
                   placeholderTextColor="#ADB5BD"
@@ -513,7 +519,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 360 : 40,
   },
   fotoSection: {
     alignItems: 'center',

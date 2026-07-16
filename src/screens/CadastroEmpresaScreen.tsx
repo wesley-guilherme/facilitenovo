@@ -142,6 +142,8 @@ export default function CadastroEmpresaScreen() {
     codigoReferencia: '',
   });
 
+  const scrollParaCampo = (_y: number) => {};
+
   useFocusEffect(
     useCallback(() => {
       limparFormulario();
@@ -393,8 +395,8 @@ const valoresInsert = [
 
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + 50 + 20 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
+        behavior="height"
+        keyboardVerticalOffset={0}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
@@ -433,6 +435,7 @@ const valoresInsert = [
                 </Text>
                 <TextInput
                   ref={nomeRef}
+                  onFocus={() => scrollParaCampo(170)}
                   style={[styles.input, errors.nomeFantasia ? styles.inputError : null]}
                   placeholder="Digite o nome fantasia da empresa"
                   placeholderTextColor="#ADB5BD"
@@ -454,6 +457,7 @@ const valoresInsert = [
                 </Text>
                 <TextInput
                   ref={proprietarioRef}
+                  onFocus={() => scrollParaCampo(260)}
                   style={[styles.input, errors.proprietario ? styles.inputError : null]}
                   placeholder="Digite o nome do proprietário"
                   placeholderTextColor="#ADB5BD"
@@ -477,6 +481,7 @@ const valoresInsert = [
                   </Text>
                   <TextInput
                     ref={cidadeRef}
+                    onFocus={() => scrollParaCampo(340)}
                     style={[styles.input, errors.cidade ? styles.inputError : null]}
                     placeholder="Digite a cidade"
                     placeholderTextColor="#ADB5BD"
@@ -494,6 +499,7 @@ const valoresInsert = [
                   </Text>
                   <TextInput
                     ref={estadoRef}
+                    onFocus={() => scrollParaCampo(340)}
                     style={[styles.input, errors.estado ? styles.inputError : null]}
                     placeholder="UF (ex: BA)"
                     placeholderTextColor="#ADB5BD"
@@ -519,6 +525,7 @@ const valoresInsert = [
                 </Text>
                 <TextInput
                   ref={enderecoRef}
+                  onFocus={() => scrollParaCampo(430)}
                   style={[styles.input, errors.endereco ? styles.inputError : null]}
                   placeholder="Digite o endereço (rua, avenida...)"
                   placeholderTextColor="#ADB5BD"
@@ -538,6 +545,7 @@ const valoresInsert = [
                   </Text>
                   <TextInput
                     ref={numeroRef}
+                    onFocus={() => scrollParaCampo(520)}
                     style={[styles.input, errors.numero ? styles.inputError : null]}
                     placeholder="Número do endereço"
                     placeholderTextColor="#ADB5BD"
@@ -559,6 +567,7 @@ const valoresInsert = [
                 </Text>
                 <TextInput
                   ref={emailRef}
+                  onFocus={() => scrollParaCampo(610)}
                   style={[styles.input, errors.email ? styles.inputError : null]}
                   placeholder="contato@empresa.com"
                   placeholderTextColor="#ADB5BD"
@@ -579,6 +588,7 @@ const valoresInsert = [
                 </Text>
                 <TextInput
                   ref={celularRef}
+                  onFocus={() => scrollParaCampo(700)}
                   style={[styles.input, errors.celular ? styles.inputError : null]}
                   placeholder="(99)-99999-9999"
                   placeholderTextColor="#ADB5BD"
@@ -596,6 +606,7 @@ const valoresInsert = [
                 </Text>
                 <TextInput
                   ref={codigoRef}
+                  onFocus={() => scrollParaCampo(790)}
                   style={[styles.input, errors.codigoReferencia ? styles.inputError : null]}
                   placeholder="Digite apenas números"
                   placeholderTextColor="#ADB5BD"
@@ -611,6 +622,7 @@ const valoresInsert = [
                 <Text style={styles.label}>Anotações</Text>
                 <TextInput
                   ref={anotacoesRef}
+                  onFocus={() => scrollParaCampo(880)}
                   style={styles.input}
                   placeholder="Informações adicionais sobre a empresa..."
                   placeholderTextColor="#ADB5BD"
@@ -674,7 +686,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 380 : 40,
   },
   logoSection: {
     alignItems: 'center',
