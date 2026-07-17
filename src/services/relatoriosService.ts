@@ -16,11 +16,19 @@ export type RelatorioColuna = {
 
 export type RelatorioLinha = Record<string, string>;
 
+export type RelatorioOpcoes = {
+  dias?: number;
+  dataInicial?: string;
+  dataFinal?: string;
+};
+
 export type RelatorioDados = {
   titulo: string;
   colunas: RelatorioColuna[];
   linhas: RelatorioLinha[];
   geradoEm: Date;
+  periodoAnalise?: string;
+  resumoFinal?: string;
 };
 
 type EmpresaRelatorio = {
@@ -39,7 +47,7 @@ type VisitaRelatorio = {
   hora_inicio: string;
   hora_termino: string;
   solicitante: string;
-  descricao: string;
+  protocolo_atendimento: string | null;
   nome_fantasia: string;
 };
 
@@ -104,7 +112,7 @@ const mapearEmpresa = (empresa: EmpresaRelatorio): RelatorioLinha => ({
 
 export const carregarRelatorio = async (
   id: RelatorioId,
-  opcoes?: { dias?: number }
+  opcoes?: RelatorioOpcoes
 ): Promise<RelatorioDados> => {
   const geradoEm = new Date();
 
@@ -114,7 +122,7 @@ export const carregarRelatorio = async (
        FROM empresas
        WHERE ativo = 1
        AND deleted_at IS NULL
-       ORDER BY rota ASC, nome_fantasia ASC`
+       ORDER BY nome_fantasia ASC`
     );
 
     return {
@@ -122,6 +130,7 @@ export const carregarRelatorio = async (
       colunas: colunasClientes(),
       linhas: empresas.map(mapearEmpresa),
       geradoEm,
+      resumoFinal: `Total de clientes na rota: ${empresas.length}`,
     };
   }
 
@@ -133,32 +142,45 @@ export const carregarRelatorio = async (
          v.hora_inicio,
          v.hora_termino,
          v.solicitante,
-         v.descricao,
+         v.protocolo_atendimento,
          e.nome_fantasia
        FROM visitas v
        INNER JOIN empresas e ON e.id = v.empresa_id
        WHERE v.status <> 'RASCUNHO'
        AND e.deleted_at IS NULL
-       ORDER BY v.data_visita DESC, v.hora_inicio ASC`
+       AND v.data_visita BETWEEN ? AND ?
+       ORDER BY v.data_visita ASC, v.hora_inicio ASC`,
+      [opcoes?.dataInicial || '0000-01-01', opcoes?.dataFinal || '9999-12-31']
     );
 
     return {
       titulo: 'Visita de Clientes por Data',
+      periodoAnalise: `${formatarDataBR(opcoes?.dataInicial)} a ${formatarDataBR(
+        opcoes?.dataFinal
+      )}`,
       colunas: [
         { chave: 'data', titulo: 'DATA', flex: 0.9 },
         { chave: 'hora', titulo: 'HORARIO', flex: 0.9 },
         { chave: 'empresa', titulo: 'CLIENTE', flex: 1.8 },
         { chave: 'solicitante', titulo: 'SOLICITANTE', flex: 1.4 },
-        { chave: 'descricao', titulo: 'DESCRICAO', flex: 2.2 },
+        { chave: 'protocolo', titulo: 'N. DE PROTOCOLO', flex: 1.3 },
       ],
-      linhas: visitas.map((visita) => ({
-        data: formatarDataBR(visita.data_visita),
-        hora: `${visita.hora_inicio || '--:--'} - ${visita.hora_termino || '--:--'}`,
-        empresa: visita.nome_fantasia || '-',
-        solicitante: visita.solicitante || '-',
-        descricao: visita.descricao || '-',
-      })),
+      linhas: visitas.map((visita, index) => {
+        const visitaAnterior = visitas[index - 1];
+        const mudouData =
+          index > 0 && visitaAnterior?.data_visita !== visita.data_visita;
+
+        return {
+          data: formatarDataBR(visita.data_visita),
+          hora: `${visita.hora_inicio || '--:--'} - ${visita.hora_termino || '--:--'}`,
+          empresa: visita.nome_fantasia || '-',
+          solicitante: visita.solicitante || '-',
+          protocolo: visita.protocolo_atendimento || '-',
+          __espacoAntes: mudouData ? '1' : '',
+        };
+      }),
       geradoEm,
+      resumoFinal: `Total de visitas: ${visitas.length}`,
     };
   }
 
@@ -189,7 +211,7 @@ export const carregarRelatorio = async (
     );
 
     return {
-      titulo: `Clientes sem Visita ha ${dias} dias`,
+      titulo: `Clientes Que Nao Visita a ${dias} Dias`,
       colunas: [
         ...colunasClientes(),
         { chave: 'ultimaVisita', titulo: 'ULTIMA VISITA', flex: 1.2 },
@@ -201,6 +223,7 @@ export const carregarRelatorio = async (
         dias: String(diasDesde(empresa.ultima_visita)),
       })),
       geradoEm,
+      resumoFinal: `Total de clientes sem visita: ${filtradas.length}`,
     };
   }
 

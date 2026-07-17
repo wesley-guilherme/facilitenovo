@@ -18,6 +18,8 @@ type Props = {
   paginaAtual: number;
   linhasPorPagina: number;
   geradoEm: Date;
+  periodoAnalise?: string;
+  resumoFinal?: string;
 };
 
 export const RELATORIO_DOCUMENTO_A4_WIDTH = 595;
@@ -42,6 +44,8 @@ export default function RelatorioDocumento({
   paginaAtual,
   linhasPorPagina,
   geradoEm,
+  periodoAnalise,
+  resumoFinal,
 }: Props) {
   const totalPaginas = Math.max(Math.ceil(linhas.length / linhasPorPagina), 1);
   const paginaSegura = Math.min(Math.max(paginaAtual, 1), totalPaginas);
@@ -75,6 +79,11 @@ export default function RelatorioDocumento({
           <Text style={styles.metaText}>
             HORA: {formatarHora(geradoEm)}
           </Text>
+          {periodoAnalise ? (
+            <Text style={styles.metaText}>
+              PERIODO: {periodoAnalise}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -110,6 +119,7 @@ export default function RelatorioDocumento({
                 key={`${paginaSegura}-${index}`}
                 style={[
                   styles.tabelaLinha,
+                  linha.__espacoAntes === '1' && styles.tabelaLinhaComEspaco,
                   index % 2 === 1 && styles.tabelaLinhaZebra,
                 ]}
               >
@@ -134,6 +144,12 @@ export default function RelatorioDocumento({
           )}
         </View>
       </View>
+
+      {resumoFinal && paginaSegura === totalPaginas && (
+        <View style={styles.resumoFinal}>
+          <Text style={styles.resumoFinalTexto}>{resumoFinal}</Text>
+        </View>
+      )}
 
       <View style={styles.rodape}>
         <View style={styles.rodapeLinha} />
@@ -242,6 +258,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
+  tabelaLinhaComEspaco: {
+    marginTop: 18,
+  },
   tabelaLinhaZebra: {
     backgroundColor: '#C6DEC5',
   },
@@ -263,6 +282,16 @@ const styles = StyleSheet.create({
   linhaVaziaTexto: {
     color: '#6B7280',
     fontSize: 13,
+  },
+  resumoFinal: {
+    marginTop: 16,
+    alignItems: 'flex-end',
+    paddingRight: 8,
+  },
+  resumoFinalTexto: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#000000',
   },
   rodape: {
     position: 'absolute',

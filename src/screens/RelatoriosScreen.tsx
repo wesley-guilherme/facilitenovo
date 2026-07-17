@@ -32,6 +32,7 @@ import {
   carregarRelatorio,
   RelatorioDados,
   RelatorioId,
+  RelatorioOpcoes,
 } from '../services/relatoriosService';
 import {
   compartilharRelatorioClientesRotaPdf,
@@ -40,6 +41,42 @@ import {
 
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const LINHAS_POR_PAGINA = RELATORIO_LINHAS_POR_PAGINA;
+
+const converterDataBRParaBanco = (valor: string) => {
+  const limpa = valor.trim();
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(limpa);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, diaTexto, mesTexto, anoTexto] = match;
+  const dia = Number(diaTexto);
+  const mes = Number(mesTexto);
+  const ano = Number(anoTexto);
+  const data = new Date(ano, mes - 1, dia);
+
+  if (
+    data.getFullYear() !== ano ||
+    data.getMonth() !== mes - 1 ||
+    data.getDate() !== dia
+  ) {
+    return null;
+  }
+
+  return `${anoTexto}-${mesTexto}-${diaTexto}`;
+};
+
+const formatarDataDigitada = (valor: string) => {
+  const digitos = valor.replace(/\D/g, '').slice(0, 8);
+  const partes = [
+    digitos.slice(0, 2),
+    digitos.slice(2, 4),
+    digitos.slice(4, 8),
+  ].filter(Boolean);
+
+  return partes.join('/');
+};
 
 type RelatoriosScreenNavigationProp = DrawerNavigationProp<
   RootDrawerParamList,
@@ -56,7 +93,7 @@ type RelatorioItem = {
 const RELATORIOS: RelatorioItem[] = [
   { id: 'clientes_rota', titulo: 'Clientes da Rota', icone: '🗺️', cor: '#2463EB' },
   { id: 'visitas_data', titulo: 'Visita de Clientes Por Data', icone: '📅', cor: '#34C759' },
-  { id: 'clientes_sem_visita', titulo: 'Clientes Que Não Visita', icone: '⚠️', cor: '#FF3B30' },
+  { id: 'clientes_sem_visita', titulo: 'Clientes Que Nao Visita a N Dias', icone: '⚠️', cor: '#FF3B30' },
   { id: 'clientes_mais_visitados', titulo: 'Clientes Mais Visitados', icone: '📈', cor: '#FF9500' },
   { id: 'clientes_menos_visitados', titulo: 'Clientes Menos Visitados', icone: '📉', cor: '#5856D6' },
 ];
@@ -67,8 +104,11 @@ export default function RelatoriosScreen() {
   const { width: larguraTela } = useWindowDimensions();
   const { empresa } = useEmpresa();
   const [modalDiasVisible, setModalDiasVisible] = useState(false);
+  const [modalPeriodoVisible, setModalPeriodoVisible] = useState(false);
   const [modalRelatorioVisible, setModalRelatorioVisible] = useState(false);
   const [dias, setDias] = useState('');
+  const [dataInicial, setDataInicial] = useState('');
+  const [dataFinal, setDataFinal] = useState('');
   const [selectedRelatorio, setSelectedRelatorio] = useState<RelatorioItem | null>(null);
   const [relatorioDados, setRelatorioDados] = useState<RelatorioDados | null>(null);
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -91,7 +131,7 @@ export default function RelatoriosScreen() {
 
   const abrirRelatorio = async (
     item: RelatorioItem,
-    opcoes?: { dias?: number }
+    opcoes?: RelatorioOpcoes
   ) => {
     setLoading(true);
 
@@ -110,9 +150,15 @@ export default function RelatoriosScreen() {
   };
 
   const handleRelatorioPress = (item: RelatorioItem) => {
+    setSelectedRelatorio(item);
+
     if (item.id === 'clientes_sem_visita') {
-      setSelectedRelatorio(item);
       setModalDiasVisible(true);
+      return;
+    }
+
+    if (item.id === 'visitas_data') {
+      setModalPeriodoVisible(true);
       return;
     }
 
@@ -134,6 +180,31 @@ export default function RelatoriosScreen() {
     setModalDiasVisible(false);
     setDias('');
     abrirRelatorio(selectedRelatorio, { dias: numeroDias });
+  };
+
+  const handleConfirmarPeriodo = () => {
+    const dataInicialBanco = converterDataBRParaBanco(dataInicial);
+    const dataFinalBanco = converterDataBRParaBanco(dataFinal);
+
+    if (!dataInicialBanco || !dataFinalBanco) {
+      Alert.alert('Erro', 'Digite as datas no formato DD/MM/AAAA.');
+      return;
+    }
+
+    if (dataInicialBanco > dataFinalBanco) {
+      Alert.alert('Erro', 'A data inicial nao pode ser maior que a data final.');
+      return;
+    }
+
+    if (!selectedRelatorio) {
+      return;
+    }
+
+    setModalPeriodoVisible(false);
+    abrirRelatorio(selectedRelatorio, {
+      dataInicial: dataInicialBanco,
+      dataFinal: dataFinalBanco,
+    });
   };
 
   const fecharRelatorio = () => {
@@ -222,7 +293,7 @@ export default function RelatoriosScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Clientes Que Não Visita</Text>
+            <Text style={styles.modalTitle}>Clientes Que Nao Visita a N Dias</Text>
             <Text style={styles.modalSubtitle}>
               Informe a quantidade de dias para análise
             </Text>
@@ -251,6 +322,64 @@ export default function RelatoriosScreen() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
                 onPress={handleConfirmarDias}
+              >
+                <Text style={styles.modalButtonConfirmText}>Gerar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={modalPeriodoVisible}
+        onRequestClose={() => setModalPeriodoVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Visita de Clientes Por Data</Text>
+            <Text style={styles.modalSubtitle}>
+              Informe o periodo da analise
+            </Text>
+
+            <Text style={styles.modalLabel}>Data Inicial</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="DD/MM/AAAA"
+              placeholderTextColor="#ADB5BD"
+              keyboardType="numeric"
+              value={dataInicial}
+              onChangeText={(texto) => setDataInicial(formatarDataDigitada(texto))}
+              maxLength={10}
+            />
+
+            <Text style={styles.modalLabel}>Data Final</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="DD/MM/AAAA"
+              placeholderTextColor="#ADB5BD"
+              keyboardType="numeric"
+              value={dataFinal}
+              onChangeText={(texto) => setDataFinal(formatarDataDigitada(texto))}
+              maxLength={10}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setModalPeriodoVisible(false);
+                  setDataInicial('');
+                  setDataFinal('');
+                }}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={handleConfirmarPeriodo}
               >
                 <Text style={styles.modalButtonConfirmText}>Gerar</Text>
               </TouchableOpacity>
@@ -337,6 +466,8 @@ export default function RelatoriosScreen() {
                     paginaAtual={paginaAtual}
                     linhasPorPagina={LINHAS_POR_PAGINA}
                     geradoEm={relatorioDados.geradoEm}
+                    periodoAnalise={relatorioDados.periodoAnalise}
+                    resumoFinal={relatorioDados.resumoFinal}
                   />
                 </View>
               </View>
@@ -486,6 +617,12 @@ const styles = StyleSheet.create({
     color: '#6C757D',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#495057',
+    marginBottom: 6,
   },
   modalInput: {
     backgroundColor: '#F8F9FC',

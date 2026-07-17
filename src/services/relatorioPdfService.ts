@@ -76,7 +76,8 @@ const renderizarCabecalho = (
   logoPdf: string | null,
   pagina: number,
   totalPaginas: number,
-  geradoEm: Date
+  geradoEm: Date,
+  periodoAnalise?: string
 ) => `
   <div class="linha-topo"></div>
   <header class="cabecalho">
@@ -94,6 +95,11 @@ const renderizarCabecalho = (
       <div>PAGINA: ${pagina}/${totalPaginas}</div>
       <div>DATA: ${formatarData(geradoEm)}</div>
       <div>HORA: ${formatarHora(geradoEm)}</div>
+      ${
+        periodoAnalise
+          ? `<div>PERIODO: ${escaparHtml(periodoAnalise)}</div>`
+          : ''
+      }
     </div>
   </header>
   <div class="linha-dupla"></div>
@@ -117,7 +123,9 @@ const renderizarLinha = (
   colunas: RelatorioColuna[],
   index: number
 ) => `
-  <div class="tabela-linha ${index % 2 === 1 ? 'zebra' : ''}">
+  <div class="tabela-linha ${linha.__espacoAntes === '1' ? 'com-espaco' : ''} ${
+    index % 2 === 1 ? 'zebra' : ''
+  }">
     ${colunas
       .map(
         (coluna) =>
@@ -152,7 +160,8 @@ const gerarHtmlRelatorio = async (
           logoPdf,
           pagina,
           totalPaginas,
-          relatorio.geradoEm
+          relatorio.geradoEm,
+          relatorio.periodoAnalise
         )}
         <main class="tabela">
           ${renderizarColunas(relatorio.colunas)}
@@ -166,6 +175,11 @@ const gerarHtmlRelatorio = async (
                   .join('')
           }
         </main>
+        ${
+          relatorio.resumoFinal && pagina === totalPaginas
+            ? `<div class="resumo-final">${escaparHtml(relatorio.resumoFinal)}</div>`
+            : ''
+        }
         <footer class="rodape">
           <div class="rodape-linha"></div>
           <div class="rodape-texto">Facilite</div>
@@ -267,6 +281,9 @@ const gerarHtmlRelatorio = async (
             align-items: center;
             background: #ffffff;
           }
+          .tabela-linha.com-espaco {
+            margin-top: 18px;
+          }
           .tabela-linha.zebra {
             background: #C6DEC5;
           }
@@ -286,6 +303,13 @@ const gerarHtmlRelatorio = async (
             justify-content: center;
             color: #6B7280;
             font-size: 13px;
+          }
+          .resumo-final {
+            margin-top: 16px;
+            padding-right: 8px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 800;
           }
           .rodape {
             position: absolute;

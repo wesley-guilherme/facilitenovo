@@ -25,6 +25,7 @@ import { RootDrawerParamList } from './src/types/navigation';
 import EmpresaConsultorScreen from './src/screens/EmpresaConsultorScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
 import FaleConoscoScreen from './src/screens/FaleConoscoScreen';
+import { popularMassaTesteRelatorios } from './src/utils/seedMassaTesteRelatorios';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
@@ -68,6 +69,11 @@ export default function App() {
   // Inicializar banco de dados
   useEffect(() => {
     initDatabase()
+      .then(async () => {
+        if (__DEV__) {
+          await popularMassaTesteRelatorios();
+        }
+      })
       .catch(console.error)
       .finally(() => setDbReady(true));
   }, []);
