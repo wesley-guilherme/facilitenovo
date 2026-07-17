@@ -90,17 +90,15 @@ const diasDesde = (data?: string | null) => {
 
 const colunasClientes = (): RelatorioColuna[] => [
   { chave: 'codigo', titulo: 'COD.', flex: 0.8 },
-  { chave: 'empresa', titulo: 'CLIENTE', flex: 2.2 },
-  { chave: 'cidade', titulo: 'CIDADE/UF', flex: 1.3 },
-  { chave: 'rota', titulo: 'ROTA', flex: 1 },
-  { chave: 'contato', titulo: 'CONTATO', flex: 1.3 },
+  { chave: 'empresa', titulo: 'CLIENTE', flex: 2.5 },
+  { chave: 'cidade', titulo: 'CIDADE/UF', flex: 1.5 },
+  { chave: 'contato', titulo: 'CONTATO', flex: 1.5 },
 ];
 
 const mapearEmpresa = (empresa: EmpresaRelatorio): RelatorioLinha => ({
   codigo: empresa.codigo_referencia || '-',
   empresa: empresa.nome_fantasia || '-',
   cidade: `${empresa.cidade || '-'}/${empresa.estado || '-'}`,
-  rota: empresa.rota || '-',
   contato: empresa.contato || '-',
 });
 

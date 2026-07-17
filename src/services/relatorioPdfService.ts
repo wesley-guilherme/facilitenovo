@@ -7,8 +7,10 @@ import type {
   RelatorioLinha,
 } from './relatoriosService';
 
-const PDF_WIDTH = 612;
-const PDF_HEIGHT = 792;
+const PDF_WIDTH = 595;
+const PDF_HEIGHT = 842;
+
+export const RELATORIO_LINHAS_POR_PAGINA = 36;
 
 const escaparHtml = (valor?: string | null) =>
   String(valor || '')
@@ -61,11 +63,13 @@ const formatarHora = (data: Date) =>
     minute: '2-digit',
   });
 
-const dataArquivo = (data: Date) =>
-  data
-    .toLocaleDateString('pt-BR')
-    .replace(/\D/g, '')
-    .slice(0, 6);
+const dataArquivo = (data: Date) => {
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const ano = String(data.getFullYear()).slice(-2);
+
+  return `${dia}${mes}${ano}`;
+};
 
 const renderizarCabecalho = (
   titulo: string,
@@ -128,7 +132,7 @@ const renderizarLinha = (
 const gerarHtmlRelatorio = async (
   relatorio: RelatorioDados,
   logoUri?: string | null,
-  linhasPorPagina = 36
+  linhasPorPagina = RELATORIO_LINHAS_POR_PAGINA
 ) => {
   const logoPdf = await resolverImagemParaPdf(logoUri);
   const totalPaginas = Math.max(
@@ -177,7 +181,7 @@ const gerarHtmlRelatorio = async (
       <head>
         <meta charset="utf-8" />
         <style>
-          @page { margin: 20px 24px; size: Letter; }
+          @page { margin: 0; size: A4; }
           * {
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
@@ -190,10 +194,11 @@ const gerarHtmlRelatorio = async (
             background: #ffffff;
           }
           .pagina {
-            min-height: 742px;
+            width: 210mm;
+            height: 297mm;
             page-break-after: always;
             position: relative;
-            padding-bottom: 28px;
+            padding: 20px 24px 42px;
           }
           .pagina:last-child {
             page-break-after: auto;
@@ -252,6 +257,9 @@ const gerarHtmlRelatorio = async (
             font-size: 12px;
             font-weight: 500;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
           }
           .tabela-linha {
             display: flex;
@@ -268,6 +276,8 @@ const gerarHtmlRelatorio = async (
             line-height: 15px;
             white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
           }
           .linha-vazia {
             min-height: 80px;
@@ -279,9 +289,9 @@ const gerarHtmlRelatorio = async (
           }
           .rodape {
             position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            left: 24px;
+            right: 24px;
+            bottom: 20px;
             display: flex;
             align-items: center;
           }

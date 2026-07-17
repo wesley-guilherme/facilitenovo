@@ -16,23 +16,30 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import { useEmpresa } from '../contexts/EmpresaContext';
-import RelatorioDocumento from '../components/Relatorios/RelatorioDocumento';
+import RelatorioDocumento, {
+  RELATORIO_DOCUMENTO_A4_HEIGHT,
+  RELATORIO_DOCUMENTO_A4_WIDTH,
+} from '../components/Relatorios/RelatorioDocumento';
 import {
   carregarRelatorio,
   RelatorioDados,
   RelatorioId,
 } from '../services/relatoriosService';
-import { compartilharRelatorioClientesRotaPdf } from '../services/relatorioPdfService';
+import {
+  compartilharRelatorioClientesRotaPdf,
+  RELATORIO_LINHAS_POR_PAGINA,
+} from '../services/relatorioPdfService';
 
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
-const LINHAS_POR_PAGINA = 24;
+const LINHAS_POR_PAGINA = RELATORIO_LINHAS_POR_PAGINA;
 
 type RelatoriosScreenNavigationProp = DrawerNavigationProp<
   RootDrawerParamList,
@@ -56,6 +63,8 @@ const RELATORIOS: RelatorioItem[] = [
 
 export default function RelatoriosScreen() {
   const navigation = useNavigation<RelatoriosScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
+  const { width: larguraTela } = useWindowDimensions();
   const { empresa } = useEmpresa();
   const [modalDiasVisible, setModalDiasVisible] = useState(false);
   const [modalRelatorioVisible, setModalRelatorioVisible] = useState(false);
@@ -69,6 +78,12 @@ export default function RelatoriosScreen() {
   const totalPaginas = relatorioDados
     ? Math.max(Math.ceil(relatorioDados.linhas.length / LINHAS_POR_PAGINA), 1)
     : 1;
+  const escalaPreview = Math.min(
+    (larguraTela - 24) / RELATORIO_DOCUMENTO_A4_WIDTH,
+    1
+  );
+  const larguraPreview = RELATORIO_DOCUMENTO_A4_WIDTH * escalaPreview;
+  const alturaPreview = RELATORIO_DOCUMENTO_A4_HEIGHT * escalaPreview;
 
   const handleVoltar = () => {
     navigation.goBack();
@@ -250,51 +265,92 @@ export default function RelatoriosScreen() {
         onRequestClose={fecharRelatorio}
       >
         <SafeAreaView style={styles.previewContainer}>
-          <View style={styles.previewHeader}>
+          <View style={[styles.previewHeader, { paddingTop: insets.top + 10 }]}>
             <Text style={styles.previewTitle}>
               {relatorioDados?.titulo || selectedRelatorio?.titulo || 'Relatório'}
             </Text>
-            {selectedRelatorio?.id === 'clientes_rota' && (
-              <TouchableOpacity
-                style={[
-                  styles.pdfButton,
-                  compartilhandoPdf && styles.buttonDisabled,
-                ]}
-                onPress={compartilharClientesRota}
-                disabled={compartilhandoPdf}
-              >
-                <Text style={styles.pdfButtonText}>
-                  {compartilhandoPdf ? 'Gerando...' : 'PDF'}
-                </Text>
+            <View style={styles.previewActions}>
+              {selectedRelatorio?.id === 'clientes_rota' && (
+                <TouchableOpacity
+                  style={[
+                    styles.pdfButton,
+                    compartilhandoPdf && styles.buttonDisabled,
+                  ]}
+                  onPress={compartilharClientesRota}
+                  disabled={compartilhandoPdf}
+                >
+                  <Text style={styles.pdfButtonText}>
+                    {compartilhandoPdf ? 'Gerando...' : 'PDF'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.closeButton} onPress={fecharRelatorio}>
+                <Text style={styles.closeButtonText}>Fechar</Text>
               </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.closeButton} onPress={fecharRelatorio}>
-              <Text style={styles.closeButtonText}>Fechar</Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView
             style={styles.previewScroll}
             contentContainerStyle={styles.previewScrollContent}
-            horizontal
-            showsHorizontalScrollIndicator
+            showsVerticalScrollIndicator
           >
             {relatorioDados ? (
-              <RelatorioDocumento
-                titulo={relatorioDados.titulo}
-                colunas={relatorioDados.colunas}
-                linhas={relatorioDados.linhas}
-                logoUri={empresa.logoPequena}
-                paginaAtual={paginaAtual}
-                linhasPorPagina={LINHAS_POR_PAGINA}
-                geradoEm={relatorioDados.geradoEm}
-              />
+              <View
+                style={[
+                  styles.previewDocumentoFrame,
+                  {
+                    width: larguraPreview,
+                    height: alturaPreview,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.previewDocumentoScale,
+                    {
+                      transform: [
+                        {
+                          translateX:
+                            -(
+                              RELATORIO_DOCUMENTO_A4_WIDTH *
+                              (1 - escalaPreview)
+                            ) / 2,
+                        },
+                        {
+                          translateY:
+                            -(
+                              RELATORIO_DOCUMENTO_A4_HEIGHT *
+                              (1 - escalaPreview)
+                            ) / 2,
+                        },
+                        { scale: escalaPreview },
+                      ],
+                    },
+                  ]}
+                >
+                  <RelatorioDocumento
+                    titulo={relatorioDados.titulo}
+                    colunas={relatorioDados.colunas}
+                    linhas={relatorioDados.linhas}
+                    logoUri={empresa.logoPequena}
+                    paginaAtual={paginaAtual}
+                    linhasPorPagina={LINHAS_POR_PAGINA}
+                    geradoEm={relatorioDados.geradoEm}
+                  />
+                </View>
+              </View>
             ) : (
               <ActivityIndicator color="#2463EB" />
             )}
           </ScrollView>
 
-          <View style={styles.paginationBar}>
+          <View
+            style={[
+              styles.paginationBar,
+              { paddingBottom: Math.max(insets.bottom + 18, 28) },
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.paginationButton,
@@ -481,29 +537,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#DDE3EE',
   },
   previewTitle: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#111827',
-    marginRight: 12,
+    marginRight: 10,
+  },
+  previewActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
   },
   closeButton: {
     backgroundColor: '#2463EB',
     borderRadius: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
   },
   pdfButton: {
     backgroundColor: '#1769AA',
     borderRadius: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     marginRight: 8,
   },
@@ -524,8 +585,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   previewScrollContent: {
-    padding: 16,
-    alignItems: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  previewDocumentoFrame: {
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  previewDocumentoScale: {
+    width: RELATORIO_DOCUMENTO_A4_WIDTH,
+    height: RELATORIO_DOCUMENTO_A4_HEIGHT,
   },
   paginationBar: {
     flexDirection: 'row',

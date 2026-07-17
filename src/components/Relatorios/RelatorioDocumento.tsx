@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,6 +19,12 @@ type Props = {
   linhasPorPagina: number;
   geradoEm: Date;
 };
+
+export const RELATORIO_DOCUMENTO_A4_WIDTH = 595;
+export const RELATORIO_DOCUMENTO_A4_HEIGHT = 842;
+const DOCUMENTO_PADDING_HORIZONTAL = 8;
+const TABELA_WIDTH =
+  RELATORIO_DOCUMENTO_A4_WIDTH - DOCUMENTO_PADDING_HORIZONTAL * 2;
 
 const formatarData = (data: Date) => data.toLocaleDateString('pt-BR');
 
@@ -85,49 +90,49 @@ export default function RelatorioDocumento({
                 { flex: coluna.flex || 1, textAlign: coluna.align || 'left' },
               ]}
               numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {coluna.titulo}
             </Text>
           ))}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.linhasWrapper}>
-            {linhasPagina.length === 0 ? (
-              <View style={styles.linhaVazia}>
-                <Text style={styles.linhaVaziaTexto}>
-                  Nenhum registro encontrado para este relatorio.
-                </Text>
+        <View style={styles.linhasWrapper}>
+          {linhasPagina.length === 0 ? (
+            <View style={styles.linhaVazia}>
+              <Text style={styles.linhaVaziaTexto}>
+                Nenhum registro encontrado para este relatorio.
+              </Text>
+            </View>
+          ) : (
+            linhasPagina.map((linha, index) => (
+              <View
+                key={`${paginaSegura}-${index}`}
+                style={[
+                  styles.tabelaLinha,
+                  index % 2 === 1 && styles.tabelaLinhaZebra,
+                ]}
+              >
+                {colunas.map((coluna) => (
+                  <Text
+                    key={coluna.chave}
+                    style={[
+                      styles.celula,
+                      {
+                        flex: coluna.flex || 1,
+                        textAlign: coluna.align || 'left',
+                      },
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {linha[coluna.chave] || ''}
+                  </Text>
+                ))}
               </View>
-            ) : (
-              linhasPagina.map((linha, index) => (
-                <View
-                  key={`${paginaSegura}-${index}`}
-                  style={[
-                    styles.tabelaLinha,
-                    index % 2 === 1 && styles.tabelaLinhaZebra,
-                  ]}
-                >
-                  {colunas.map((coluna) => (
-                    <Text
-                      key={coluna.chave}
-                      style={[
-                        styles.celula,
-                        {
-                          flex: coluna.flex || 1,
-                          textAlign: coluna.align || 'left',
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {linha[coluna.chave] || ''}
-                    </Text>
-                  ))}
-                </View>
-              ))
-            )}
-          </View>
-        </ScrollView>
+            ))
+          )}
+        </View>
       </View>
 
       <View style={styles.rodape}>
@@ -144,8 +149,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 8,
     paddingTop: 10,
-    paddingBottom: 12,
-    minWidth: 820,
+    paddingBottom: 34,
+    width: RELATORIO_DOCUMENTO_A4_WIDTH,
+    minHeight: RELATORIO_DOCUMENTO_A4_HEIGHT,
+    position: 'relative',
   },
   linhaTopo: {
     height: 2,
@@ -211,7 +218,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   tabelaCabecalho: {
-    minWidth: 804,
+    minWidth: TABELA_WIDTH,
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 2,
@@ -223,9 +230,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#000000',
+    minWidth: 0,
+    overflow: 'hidden',
   },
   linhasWrapper: {
-    minWidth: 804,
+    minWidth: TABELA_WIDTH,
   },
   tabelaLinha: {
     flexDirection: 'row',
@@ -242,6 +251,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 15,
     color: '#000000',
+    minWidth: 0,
+    overflow: 'hidden',
   },
   linhaVazia: {
     minHeight: 80,
@@ -254,9 +265,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   rodape: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    bottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 18,
     paddingHorizontal: 12,
   },
   rodapeLinha: {
