@@ -247,7 +247,7 @@ const carregarDados = async () => {
       .filter(Boolean)
       .join('/');
 
-    return [ruaNumero || 'Endereco nao informado', empresaConsultor.bairro, cidadeEstado]
+    return [ruaNumero || 'Endereço Não Informado', empresaConsultor.bairro, cidadeEstado]
       .filter(Boolean)
       .join(' - ');
   };
@@ -372,10 +372,10 @@ const carregarDados = async () => {
               <div class="protocol-value">${escaparHtml(empresa.nome_fantasia || 'Nao informada')}</div>
             </section>
             <section class="grid">
-              <div><div class="label">Consultor</div><div class="value">${escaparHtml(consultor?.nome || 'Nao informado')}</div></div>
-              <div><div class="label">Data da visita</div><div class="value">${escaparHtml(formatarDataBR(visita.data_visita))}</div></div>
-              <div><div class="label">Protocolo de atendimento</div><div class="value">${escaparHtml(visita.protocolo_atendimento || 'Nao informado')}</div></div>
-              <div><div class="label">Solicitante</div><div class="value">${escaparHtml(visita.solicitante || 'Nao informado')}</div></div>
+              <div><div class="label">Consultor</div><div class="value">${escaparHtml(consultor?.nome || 'Não Informado')}</div></div>
+              <div><div class="label">Data da Visita</div><div class="value">${escaparHtml(formatarDataBR(visita.data_visita))}</div></div>
+              <div><div class="label">Protocolo de Atendimento</div><div class="value">${escaparHtml(visita.protocolo_atendimento || 'Não Informado')}</div></div>
+              <div><div class="label">Solicitante</div><div class="value">${escaparHtml(visita.solicitante || 'Não Informado')}</div></div>
               <div><div class="label">Horário de Início</div><div class="value">${escaparHtml(visita.hora_inicio || '--:--')}</div></div>
               <div><div class="label">Horário de Término</div><div class="value">${escaparHtml(visita.hora_termino || '--:--')}</div></div>
             </section>
@@ -674,10 +674,10 @@ const carregarDados = async () => {
 
           <View style={styles.captureGrid}>
             {[
-              ['Consultor', consultor?.nome || 'Nao informado'],
-              ['Data da visita', formatarDataBR(visita.data_visita)],
-              ['Protocolo de atendimento', visita.protocolo_atendimento || 'Nao informado'],
-              ['Solicitante', visita.solicitante || 'Nao informado'],
+              ['Consultor', consultor?.nome || 'Não Informado'],
+              ['Data da Visita', formatarDataBR(visita.data_visita)],
+              ['Protocolo de atendimento', visita.protocolo_atendimento || 'Não Informado'],
+              ['Solicitante', visita.solicitante || 'Não Informado'],
               ['Horário de Início', visita.hora_inicio || '--:--'],
               ['Horário de Término', visita.hora_termino || '--:--'],
             ].map(([label, value]) => (

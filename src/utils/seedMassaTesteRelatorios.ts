@@ -298,3 +298,17 @@ export const popularMassaTesteRelatorios = async () => {
     await db.execAsync('PRAGMA foreign_keys = ON;');
   }
 };
+
+export const limparMassaTesteRelatorios = async () => {
+  await db.execAsync('PRAGMA foreign_keys = OFF;');
+
+  try {
+    await db.runAsync("DELETE FROM visitas WHERE id LIKE 'seed-visita-%'");
+    await db.runAsync("DELETE FROM assinaturas WHERE id LIKE 'seed-assinatura-%'");
+    await db.runAsync("DELETE FROM empresas WHERE id LIKE 'seed-empresa-%'");
+
+    console.log('Massa de teste de relatorios removida.');
+  } finally {
+    await db.execAsync('PRAGMA foreign_keys = ON;');
+  }
+};

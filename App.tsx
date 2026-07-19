@@ -25,7 +25,7 @@ import { RootDrawerParamList } from './src/types/navigation';
 import EmpresaConsultorScreen from './src/screens/EmpresaConsultorScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
 import FaleConoscoScreen from './src/screens/FaleConoscoScreen';
-import { popularMassaTesteRelatorios } from './src/utils/seedMassaTesteRelatorios';
+import { limparMassaTesteRelatorios } from './src/utils/seedMassaTesteRelatorios';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
@@ -71,7 +71,7 @@ export default function App() {
     initDatabase()
       .then(async () => {
         if (__DEV__) {
-          await popularMassaTesteRelatorios();
+          await limparMassaTesteRelatorios();
         }
       })
       .catch(console.error)

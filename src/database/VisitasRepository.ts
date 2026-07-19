@@ -235,69 +235,7 @@ ultima_visita ASC`
       created_at: string;
     }
   ) {
-
-    const formularioExistente =
-      await this.buscarUltimoFormulario(
-        visita.empresa_id
-      );
-
-    if (!formularioExistente) {
-      return await this.inserir(visita);
-    }
-
-    const resultado = await db.runAsync(
-      `UPDATE visitas
-
-       SET
-
-         consultor_id = ?,
-
-         protocolo_atendimento = ?,
-
-         solicitante = ?,
-
-         data_visita = ?,
-
-         hora_inicio = ?,
-
-         hora_termino = ?,
-
-         descricao = ?,
-
-         status = ?,
-
-         assinatura = ?,
-
-         updated_at = ?
-
-       WHERE id = ?`,
-      [
-        visita.consultor_id ?? null,
-        visita.protocolo_atendimento ?? null,
-        visita.solicitante,
-        visita.data_visita,
-        visita.hora_inicio,
-        visita.hora_termino,
-        visita.descricao,
-        visita.status ?? 'CONCLUIDA',
-        visita.assinatura ?? null,
-        new Date().toISOString(),
-        formularioExistente.id
-      ]
-    );
-
-    await db.runAsync(
-      `DELETE
-       FROM visitas
-       WHERE empresa_id = ?
-       AND id <> ?`,
-      [
-        visita.empresa_id,
-        formularioExistente.id
-      ]
-    );
-
-    return resultado;
+    return await this.inserir(visita);
 
   },
 

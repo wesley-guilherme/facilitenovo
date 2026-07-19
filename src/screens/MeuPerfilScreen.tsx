@@ -99,7 +99,7 @@ export default function MeuPerfilScreen() {
           {/* WhatsApp */}
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📱 WhatsApp</Text>
-            <Text style={styles.infoValue}>{consultor.whatsapp || 'Não informado'}</Text>
+            <Text style={styles.infoValue}>{consultor.whatsapp || 'Não Informado'}</Text>
           </View>
 
           {/* Rota */}

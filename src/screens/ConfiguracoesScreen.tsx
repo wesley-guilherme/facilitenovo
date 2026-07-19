@@ -44,19 +44,58 @@ const CONFIG_INICIAL = {
   notificacoesAtivas: true,
 };
 
-const TABELAS_BACKUP = [
+const TABELAS_CADASTRO_BACKUP = [
   'empresas',
-  'visitas',
   'configuracoes',
   'textos_predefinidos',
   'consultor',
   'empresa_consultor',
 ] as const;
 
+const TABELAS_HISTORICO_BACKUP = [
+  'visitas',
+  'assinaturas',
+] as const;
+
+const TABELAS_BACKUP = [
+  'empresas',
+  'visitas',
+  'assinaturas',
+  'configuracoes',
+  'textos_predefinidos',
+  'consultor',
+  'empresa_consultor',
+] as const;
+
+const obterTabelasBackup = (incluirHistorico: boolean) => [
+  ...TABELAS_CADASTRO_BACKUP,
+  ...(incluirHistorico ? TABELAS_HISTORICO_BACKUP : []),
+];
+
+const inserirRegistroBackup = async (
+  tabela: string,
+  item: Record<string, unknown>
+) => {
+  const colunas = Object.keys(item);
+
+  if (colunas.length === 0) {
+    return;
+  }
+
+  const placeholders = colunas.map(() => '?').join(', ');
+  const valores = colunas.map((coluna) => item[coluna] ?? null);
+
+  await db.runAsync(
+    `INSERT INTO ${tabela} (${colunas.join(', ')}) VALUES (${placeholders})`,
+    valores
+  );
+};
+
 export default function ConfiguracoesScreen() {
   const navigation = useNavigation<ConfiguracoesScreenNavigationProp>();  
   const [diasAviso, setDiasAviso] = useState(CONFIG_INICIAL.diasAviso);
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(CONFIG_INICIAL.notificacoesAtivas);
+  const [incluirHistoricoBackup, setIncluirHistoricoBackup] = useState(true);
   const [loading, setLoading] = useState(false);
   const [quantidadeOSs, setQuantidadeOSs] = useState(0);
   const [tamanhoBanco, setTamanhoBanco] = useState('0 KB');
@@ -155,8 +194,16 @@ export default function ConfiguracoesScreen() {
     try {
       // 1. Buscar todos os dados do SQLite
       const backupData: any = {};
+      const tabelasBackup = obterTabelasBackup(incluirHistoricoBackup);
+      backupData.__metadata = {
+        app: 'Facilite',
+        versao: 1,
+        gerado_em: new Date().toISOString(),
+        incluir_historico: incluirHistoricoBackup,
+        tabelas: tabelasBackup,
+      };
       
-      for (const tabela of TABELAS_BACKUP) {
+      for (const tabela of tabelasBackup) {
         try {
           const dados = await db.getAllAsync(`SELECT * FROM ${tabela}`);
           backupData[tabela] = dados;
@@ -232,32 +279,33 @@ export default function ConfiguracoesScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                // 4. Restaurar cada tabela
-                for (const tabela of TABELAS_BACKUP) {
-                  const dados = backupData[tabela];
+                await db.execAsync('PRAGMA foreign_keys = OFF');
+                await db.execAsync('BEGIN TRANSACTION');
 
-                  if (Array.isArray(dados)) {
-                    try {
-                      await db.execAsync(`DELETE FROM ${tabela}`);
+                try {
+                  // 4. Restaurar cada tabela
+                  for (const tabela of [...TABELAS_BACKUP].reverse()) {
+                    await db.execAsync(`DELETE FROM ${tabela}`);
+                  }
 
-                      for (const item of dados as any[]) {
-                        const colunas = Object.keys(item).join(', ');
-                        const valores = Object.values(item).map((v: any) => {
-                          if (typeof v === 'string') {
-                            return `'${v.replace(/'/g, "''")}'`;
-                          }
-                          if (v === null || v === undefined) {
-                            return 'NULL';
-                          }
-                          return v;
-                        }).join(', ');
-                        
-                        await db.execAsync(`INSERT INTO ${tabela} (${colunas}) VALUES (${valores})`);
-                      }
-                    } catch (error) {
-                      console.error(`Erro ao restaurar tabela ${tabela}:`, error);
+                  for (const tabela of TABELAS_BACKUP) {
+                    const dados = backupData[tabela];
+
+                    if (!Array.isArray(dados)) {
+                      continue;
+                    }
+
+                    for (const item of dados as Record<string, unknown>[]) {
+                      await inserirRegistroBackup(tabela, item);
                     }
                   }
+
+                  await db.execAsync('COMMIT');
+                } catch (error) {
+                  await db.execAsync('ROLLBACK');
+                  throw error;
+                } finally {
+                  await db.execAsync('PRAGMA foreign_keys = ON');
                 }
                 
                 await carregarInfoDados();
@@ -337,6 +385,22 @@ export default function ConfiguracoesScreen() {
           <Text style={styles.sectionDescription}>
             Exporte seus dados para fazer backup. O arquivo será gerado e você escolhe onde salvar.
           </Text>
+
+          <View style={[styles.switchContainer, styles.backupSwitchContainer]}>
+            <View style={styles.switchTextContainer}>
+              <Text style={styles.switchLabel}>Incluir histórico de visitas</Text>
+              <Text style={styles.switchDescription}>
+                Leva visitas salvas e assinaturas no arquivo de backup
+              </Text>
+            </View>
+            <Switch
+              value={incluirHistoricoBackup}
+              onValueChange={setIncluirHistoricoBackup}
+              style={styles.backupSwitch}
+              trackColor={{ false: '#E9ECEF', true: '#2463EB' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
           
           <TouchableOpacity 
             style={styles.backupButton} 
@@ -505,9 +569,28 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 8,
   },
+  backupSwitchContainer: {
+    overflow: 'hidden',
+  },
   switchLabel: {
     fontSize: 15,
     color: '#1A1A1A',
+    flexShrink: 1,
+  },
+  switchTextContainer: {
+    flex: 1,
+    paddingRight: 8,
+    minWidth: 0,
+  },
+  switchDescription: {
+    fontSize: 11,
+    color: '#6C757D',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  backupSwitch: {
+    flexShrink: 0,
+    transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }],
   },
   backupButton: {
     flexDirection: 'row',

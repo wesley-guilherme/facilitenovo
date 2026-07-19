@@ -9,7 +9,9 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -35,7 +37,8 @@ import {
   RelatorioOpcoes,
 } from '../services/relatoriosService';
 import {
-  compartilharRelatorioClientesRotaPdf,
+  compartilharRelatorioPdf,
+  paginarLinhasRelatorio,
   RELATORIO_LINHAS_POR_PAGINA,
 } from '../services/relatorioPdfService';
 
@@ -93,7 +96,7 @@ type RelatorioItem = {
 const RELATORIOS: RelatorioItem[] = [
   { id: 'clientes_rota', titulo: 'Clientes da Rota', icone: '🗺️', cor: '#2463EB' },
   { id: 'visitas_data', titulo: 'Visita de Clientes Por Data', icone: '📅', cor: '#34C759' },
-  { id: 'clientes_sem_visita', titulo: 'Clientes Que Nao Visita a N Dias', icone: '⚠️', cor: '#FF3B30' },
+  { id: 'clientes_sem_visita', titulo: 'Clientes Que Não Visita a N Dias', icone: '⚠️', cor: '#FF3B30' },
   { id: 'clientes_mais_visitados', titulo: 'Clientes Mais Visitados', icone: '📈', cor: '#FF9500' },
   { id: 'clientes_menos_visitados', titulo: 'Clientes Menos Visitados', icone: '📉', cor: '#5856D6' },
 ];
@@ -116,7 +119,11 @@ export default function RelatoriosScreen() {
   const [compartilhandoPdf, setCompartilhandoPdf] = useState(false);
 
   const totalPaginas = relatorioDados
-    ? Math.max(Math.ceil(relatorioDados.linhas.length / LINHAS_POR_PAGINA), 1)
+    ? paginarLinhasRelatorio(
+        relatorioDados.linhas,
+        LINHAS_POR_PAGINA,
+        Boolean(relatorioDados.resumoFinal)
+      ).length
     : 1;
   const escalaPreview = Math.min(
     (larguraTela - 24) / RELATORIO_DOCUMENTO_A4_WIDTH,
@@ -157,7 +164,13 @@ export default function RelatoriosScreen() {
       return;
     }
 
-    if (item.id === 'visitas_data') {
+    if (
+      item.id === 'visitas_data' ||
+      item.id === 'clientes_mais_visitados' ||
+      item.id === 'clientes_menos_visitados'
+    ) {
+      setDataInicial('');
+      setDataFinal('');
       setModalPeriodoVisible(true);
       return;
     }
@@ -201,6 +214,8 @@ export default function RelatoriosScreen() {
     }
 
     setModalPeriodoVisible(false);
+    setDataInicial('');
+    setDataFinal('');
     abrirRelatorio(selectedRelatorio, {
       dataInicial: dataInicialBanco,
       dataFinal: dataFinalBanco,
@@ -222,14 +237,14 @@ export default function RelatoriosScreen() {
     setPaginaAtual((pagina) => Math.min(pagina + 1, totalPaginas));
   };
 
-  const compartilharClientesRota = async () => {
-    if (!relatorioDados || selectedRelatorio?.id !== 'clientes_rota') {
+  const compartilharRelatorioSelecionado = async () => {
+    if (!relatorioDados) {
       return;
     }
 
     try {
       setCompartilhandoPdf(true);
-      await compartilharRelatorioClientesRotaPdf(
+      await compartilharRelatorioPdf(
         relatorioDados,
         empresa.logoPequena
       );
@@ -336,56 +351,64 @@ export default function RelatoriosScreen() {
         visible={modalPeriodoVisible}
         onRequestClose={() => setModalPeriodoVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Visita de Clientes Por Data</Text>
-            <Text style={styles.modalSubtitle}>
-              Informe o periodo da analise
-            </Text>
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        >
+          <View style={styles.modalPeriodoOverlay}>
+            <View style={styles.modalPeriodoContent}>
+              <Text style={styles.modalTitle}>
+                {selectedRelatorio?.titulo || 'Período de Análise'}
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                Informe o período da análise
+              </Text>
 
-            <Text style={styles.modalLabel}>Data Inicial</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor="#ADB5BD"
-              keyboardType="numeric"
-              value={dataInicial}
-              onChangeText={(texto) => setDataInicial(formatarDataDigitada(texto))}
-              maxLength={10}
-            />
+              <Text style={styles.modalLabel}>Data Inicial</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#ADB5BD"
+                keyboardType="numeric"
+                value={dataInicial}
+                onChangeText={(texto) => setDataInicial(formatarDataDigitada(texto))}
+                maxLength={10}
+              />
 
-            <Text style={styles.modalLabel}>Data Final</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor="#ADB5BD"
-              keyboardType="numeric"
-              value={dataFinal}
-              onChangeText={(texto) => setDataFinal(formatarDataDigitada(texto))}
-              maxLength={10}
-            />
+              <Text style={styles.modalLabel}>Data Final</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#ADB5BD"
+                keyboardType="numeric"
+                value={dataFinal}
+                onChangeText={(texto) => setDataFinal(formatarDataDigitada(texto))}
+                maxLength={10}
+              />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => {
-                  setModalPeriodoVisible(false);
-                  setDataInicial('');
-                  setDataFinal('');
-                }}
-              >
-                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
-              </TouchableOpacity>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => {
+                    setModalPeriodoVisible(false);
+                    setDataInicial('');
+                    setDataFinal('');
+                  }}
+                >
+                  <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
-                onPress={handleConfirmarPeriodo}
-              >
-                <Text style={styles.modalButtonConfirmText}>Gerar</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonConfirm]}
+                  onPress={handleConfirmarPeriodo}
+                >
+                  <Text style={styles.modalButtonConfirmText}>Gerar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -399,13 +422,13 @@ export default function RelatoriosScreen() {
               {relatorioDados?.titulo || selectedRelatorio?.titulo || 'Relatório'}
             </Text>
             <View style={styles.previewActions}>
-              {selectedRelatorio?.id === 'clientes_rota' && (
+              {relatorioDados && (
                 <TouchableOpacity
                   style={[
                     styles.pdfButton,
                     compartilhandoPdf && styles.buttonDisabled,
                   ]}
-                  onPress={compartilharClientesRota}
+                  onPress={compartilharRelatorioSelecionado}
                   disabled={compartilhandoPdf}
                 >
                   <Text style={styles.pdfButtonText}>
@@ -601,6 +624,25 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '82%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 22,
+  },
+  modalKeyboardAvoiding: {
+    flex: 1,
+  },
+  modalPeriodoOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+  modalPeriodoContent: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '88%',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 22,

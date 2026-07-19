@@ -9,6 +9,7 @@ import type {
   RelatorioColuna,
   RelatorioLinha,
 } from '../../services/relatoriosService';
+import { paginarLinhasRelatorio } from '../../services/relatorioPdfService';
 
 type Props = {
   titulo: string;
@@ -47,10 +48,14 @@ export default function RelatorioDocumento({
   periodoAnalise,
   resumoFinal,
 }: Props) {
-  const totalPaginas = Math.max(Math.ceil(linhas.length / linhasPorPagina), 1);
+  const paginas = paginarLinhasRelatorio(
+    linhas,
+    linhasPorPagina,
+    Boolean(resumoFinal)
+  );
+  const totalPaginas = paginas.length;
   const paginaSegura = Math.min(Math.max(paginaAtual, 1), totalPaginas);
-  const inicio = (paginaSegura - 1) * linhasPorPagina;
-  const linhasPagina = linhas.slice(inicio, inicio + linhasPorPagina);
+  const linhasPagina = paginas[paginaSegura - 1] || [];
 
   return (
     <View style={styles.documento}>

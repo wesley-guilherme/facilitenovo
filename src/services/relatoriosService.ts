@@ -163,7 +163,7 @@ export const carregarRelatorio = async (
         { chave: 'hora', titulo: 'HORARIO', flex: 0.9 },
         { chave: 'empresa', titulo: 'CLIENTE', flex: 1.8 },
         { chave: 'solicitante', titulo: 'SOLICITANTE', flex: 1.4 },
-        { chave: 'protocolo', titulo: 'N. DE PROTOCOLO', flex: 1.3 },
+        { chave: 'protocolo', titulo: 'PROTOCOLO', flex: 1.3 },
       ],
       linhas: visitas.map((visita, index) => {
         const visitaAnterior = visitas[index - 1];
@@ -172,7 +172,7 @@ export const carregarRelatorio = async (
 
         return {
           data: formatarDataBR(visita.data_visita),
-          hora: `${visita.hora_inicio || '--:--'} - ${visita.hora_termino || '--:--'}`,
+          hora: visita.hora_inicio || '--:--',
           empresa: visita.nome_fantasia || '-',
           solicitante: visita.solicitante || '-',
           protocolo: visita.protocolo_atendimento || '-',
@@ -186,6 +186,7 @@ export const carregarRelatorio = async (
 
   if (id === 'clientes_sem_visita') {
     const dias = opcoes?.dias || 30;
+    const unidadeDias = dias === 1 ? 'Dia' : 'Dias';
     const empresas = await db.getAllAsync<EmpresaUltimaVisita>(
       `SELECT
          e.id,
@@ -211,7 +212,7 @@ export const carregarRelatorio = async (
     );
 
     return {
-      titulo: `Clientes Que Nao Visita a ${dias} Dias`,
+      titulo: `Clientes Que Não Visita a ${dias} ${unidadeDias}`,
       colunas: [
         ...colunasClientes(),
         { chave: 'ultimaVisita', titulo: 'ULTIMA VISITA', flex: 1.2 },
@@ -228,6 +229,8 @@ export const carregarRelatorio = async (
   }
 
   const direcao = id === 'clientes_mais_visitados' ? 'DESC' : 'ASC';
+  const dataInicial = opcoes?.dataInicial || '0000-01-01';
+  const dataFinal = opcoes?.dataFinal || '9999-12-31';
   const empresas = await db.getAllAsync<EmpresaContagem>(
     `SELECT
        e.id,
@@ -242,10 +245,12 @@ export const carregarRelatorio = async (
      LEFT JOIN visitas v
        ON v.empresa_id = e.id
        AND v.status <> 'RASCUNHO'
+       AND v.data_visita BETWEEN ? AND ?
      WHERE e.ativo = 1
      AND e.deleted_at IS NULL
      GROUP BY e.id
-     ORDER BY total_visitas ${direcao}, e.nome_fantasia ASC`
+     ORDER BY total_visitas ${direcao}, e.nome_fantasia ASC`,
+    [dataInicial, dataFinal]
   );
 
   return {
@@ -253,6 +258,10 @@ export const carregarRelatorio = async (
       id === 'clientes_mais_visitados'
         ? 'Clientes Mais Visitados'
         : 'Clientes Menos Visitados',
+    periodoAnalise:
+      opcoes?.dataInicial && opcoes?.dataFinal
+        ? `${formatarDataBR(opcoes.dataInicial)} a ${formatarDataBR(opcoes.dataFinal)}`
+        : undefined,
     colunas: [
       ...colunasClientes(),
       { chave: 'total', titulo: 'VISITAS', flex: 0.8, align: 'right' },
@@ -262,5 +271,9 @@ export const carregarRelatorio = async (
       total: String(empresa.total_visitas || 0),
     })),
     geradoEm,
+    resumoFinal: `Total de visitas no período: ${empresas.reduce(
+      (total, empresa) => total + Number(empresa.total_visitas || 0),
+      0
+    )}`,
   };
 };

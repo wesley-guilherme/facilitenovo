@@ -11,6 +11,7 @@ const PDF_WIDTH = 595;
 const PDF_HEIGHT = 842;
 
 export const RELATORIO_LINHAS_POR_PAGINA = 36;
+export const RELATORIO_LINHAS_ULTIMA_PAGINA_COM_RESUMO = 32;
 
 const escaparHtml = (valor?: string | null) =>
   String(valor || '')
@@ -69,6 +70,60 @@ const dataArquivo = (data: Date) => {
   const ano = String(data.getFullYear()).slice(-2);
 
   return `${dia}${mes}${ano}`;
+};
+
+const normalizarNomeArquivo = (valor: string) =>
+  valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+
+export const paginarLinhasRelatorio = (
+  linhas: RelatorioLinha[],
+  linhasPorPagina = RELATORIO_LINHAS_POR_PAGINA,
+  reservarResumo = false
+) => {
+  if (linhas.length === 0) {
+    return [[]];
+  }
+
+  if (!reservarResumo || linhas.length <= RELATORIO_LINHAS_ULTIMA_PAGINA_COM_RESUMO) {
+    const paginas: RelatorioLinha[][] = [];
+
+    for (let inicio = 0; inicio < linhas.length; inicio += linhasPorPagina) {
+      paginas.push(linhas.slice(inicio, inicio + linhasPorPagina));
+    }
+
+    return paginas;
+  }
+
+  const paginas: RelatorioLinha[][] = [];
+  let restantes = linhas.length;
+  let cursor = 0;
+
+  while (restantes > RELATORIO_LINHAS_ULTIMA_PAGINA_COM_RESUMO) {
+    const restanteDepoisPaginaCheia = restantes - linhasPorPagina;
+
+    if (
+      restanteDepoisPaginaCheia > 0 &&
+      restanteDepoisPaginaCheia < RELATORIO_LINHAS_ULTIMA_PAGINA_COM_RESUMO
+    ) {
+      const quantidade = restantes - RELATORIO_LINHAS_ULTIMA_PAGINA_COM_RESUMO;
+      paginas.push(linhas.slice(cursor, cursor + quantidade));
+      cursor += quantidade;
+      restantes -= quantidade;
+      break;
+    }
+
+    paginas.push(linhas.slice(cursor, cursor + linhasPorPagina));
+    cursor += linhasPorPagina;
+    restantes -= linhasPorPagina;
+  }
+
+  paginas.push(linhas.slice(cursor));
+
+  return paginas;
 };
 
 const renderizarCabecalho = (
@@ -143,15 +198,15 @@ const gerarHtmlRelatorio = async (
   linhasPorPagina = RELATORIO_LINHAS_POR_PAGINA
 ) => {
   const logoPdf = await resolverImagemParaPdf(logoUri);
-  const totalPaginas = Math.max(
-    Math.ceil(relatorio.linhas.length / linhasPorPagina),
-    1
+  const paginasLinhas = paginarLinhasRelatorio(
+    relatorio.linhas,
+    linhasPorPagina,
+    Boolean(relatorio.resumoFinal)
   );
+  const totalPaginas = paginasLinhas.length;
 
-  const paginas = Array.from({ length: totalPaginas }, (_, indice) => {
+  const paginas = paginasLinhas.map((linhas, indice) => {
     const pagina = indice + 1;
-    const inicio = indice * linhasPorPagina;
-    const linhas = relatorio.linhas.slice(inicio, inicio + linhasPorPagina);
 
     return `
       <section class="pagina">
@@ -337,7 +392,7 @@ const gerarHtmlRelatorio = async (
   `;
 };
 
-export const compartilharRelatorioClientesRotaPdf = async (
+export const compartilharRelatorioPdf = async (
   relatorio: RelatorioDados,
   logoUri?: string | null
 ) => {
@@ -355,7 +410,9 @@ export const compartilharRelatorioClientesRotaPdf = async (
     base64: false,
   });
 
-  const nomeArquivo = `clientesdarota${dataArquivo(relatorio.geradoEm)}.pdf`;
+  const nomeArquivo = `${normalizarNomeArquivo(relatorio.titulo)}${dataArquivo(
+    relatorio.geradoEm
+  )}.pdf`;
   const destino = `${FileSystem.cacheDirectory}${nomeArquivo}`;
 
   await FileSystem.copyAsync({
@@ -365,7 +422,7 @@ export const compartilharRelatorioClientesRotaPdf = async (
 
   await Sharing.shareAsync(destino, {
     mimeType: 'application/pdf',
-    dialogTitle: 'Compartilhar Clientes da Rota',
+    dialogTitle: `Compartilhar ${relatorio.titulo}`,
     UTI: 'com.adobe.pdf',
   });
 };
