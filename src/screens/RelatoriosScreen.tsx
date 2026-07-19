@@ -164,11 +164,7 @@ export default function RelatoriosScreen() {
       return;
     }
 
-    if (
-      item.id === 'visitas_data' ||
-      item.id === 'clientes_mais_visitados' ||
-      item.id === 'clientes_menos_visitados'
-    ) {
+    if (item.id === 'visitas_data' || item.id === 'clientes_mais_visitados') {
       setDataInicial('');
       setDataFinal('');
       setModalPeriodoVisible(true);

@@ -97,7 +97,7 @@ export default function ConfiguracoesScreen() {
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(CONFIG_INICIAL.notificacoesAtivas);
   const [incluirHistoricoBackup, setIncluirHistoricoBackup] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [quantidadeOSs, setQuantidadeOSs] = useState(0);
+  const [quantidadeFormularios, setQuantidadeFormularios] = useState(0);
   const [tamanhoBanco, setTamanhoBanco] = useState('0 KB');
 
   // Carregar informações dos dados
@@ -123,17 +123,19 @@ export default function ConfiguracoesScreen() {
 
  const carregarInfoDados = async () => {
   try {
-    // Tentar contar OSs - se a tabela não existir, retorna 0
+    // Tentar contar formulários salvos - se a tabela não existir, retorna 0
     let total = 0;
     try {
-      const result = await db.getAllAsync('SELECT COUNT(*) as total FROM os_assinadas');
+      const result = await db.getAllAsync(
+        "SELECT COUNT(*) as total FROM visitas WHERE status <> 'RASCUNHO'"
+      );
       total = (result as any[])[0]?.total || 0;
     } catch (tableError) {
       // Tabela ainda não existe - ignorar
-      console.log('Tabela os_assinadas ainda não criada');
+      console.log('Tabela visitas ainda não criada');
       total = 0;
     }
-    setQuantidadeOSs(total);
+    setQuantidadeFormularios(total);
     
     // Verificar tamanho do banco (apenas se o arquivo existe)
     const dbPath = `${Paths.document.uri}SQLite/facilite.db`;
@@ -152,7 +154,7 @@ export default function ConfiguracoesScreen() {
     }
   } catch (error) {
     console.error('Erro ao carregar informações:', error);
-    setQuantidadeOSs(0);
+    setQuantidadeFormularios(0);
     setTamanhoBanco('0 KB');
   }
 };
@@ -450,8 +452,8 @@ export default function ConfiguracoesScreen() {
           <Text style={styles.sectionTitle}>🗄️ Dados</Text>
           
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>OSs armazenadas</Text>
-            <Text style={styles.infoValue}>{quantidadeOSs}</Text>
+            <Text style={styles.infoLabel}>Formulários armazenados</Text>
+            <Text style={styles.infoValue}>{quantidadeFormularios}</Text>
           </View>
           
           <View style={styles.infoItem}>
