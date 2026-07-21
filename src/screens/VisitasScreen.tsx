@@ -26,6 +26,7 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  Keyboard,
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -49,6 +50,7 @@ const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const PDF_A4_WIDTH = 595;
 const PDF_A4_HEIGHT = 842;
 
+// Tipo da navegacao desta tela no drawer.
 type VisitasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Visitas'>;
 
 // Tipo para Empresa
@@ -128,16 +130,19 @@ export default function VisitasScreen() {
   const formularioCapturaRef = React.useRef<View>(null);
 
   // Carregar configurações e dados
+  // Recarrega empresas, avisos e datas sempre que a tela recebe foco.
   useFocusEffect(
     useCallback(() => {
       carregarTela();
     }, [])
   );
 
+  // Orquestra o carregamento inicial da tela.
   const carregarTela = async () => {
     await carregarDados();
   };
 
+// Busca empresas com status de aviso e datas disponiveis para lote.
 const carregarDados = async () => {
   setLoading(true);
   try {
@@ -732,10 +737,10 @@ const carregarDados = async () => {
   const grupos = agruparPorData();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
@@ -752,6 +757,8 @@ const carregarDados = async () => {
             placeholderTextColor="#ADB5BD"
             value={pesquisa}
             onChangeText={setPesquisa}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
           />
         </View>
       </View>

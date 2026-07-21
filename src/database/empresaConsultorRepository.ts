@@ -1,5 +1,13 @@
+/**
+ * REPOSITORY: EmpresaConsultorRepository
+ *
+ * FUNCAO:
+ * Le e atualiza os dados da empresa do consultor usados no formulario.
+ */
+
 import { db } from './initDatabase';
 
+// Tipo que representa a empresa do consultor no banco local.
 export type EmpresaConsultorDB = {
   id: string;
   logo_pequena: string | null;
@@ -18,6 +26,7 @@ export type EmpresaConsultorDB = {
 
 export const EmpresaConsultorRepository = {
   
+// Carrega o cadastro unico da empresa do consultor.
 async carregar(): Promise<EmpresaConsultorDB | null> {
 
   try {
@@ -45,6 +54,7 @@ async carregar(): Promise<EmpresaConsultorDB | null> {
   }
 },
 
+  // Atualiza dados, logos e mensagem padrao da empresa do consultor.
   async salvar(
     valores: any[]
   ) {

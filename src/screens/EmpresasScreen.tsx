@@ -36,6 +36,7 @@ import { db } from '../database/initDatabase'
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
+// Tipo da navegacao desta tela no drawer.
 type EmpresasScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Empresas'>;
 
 // Tipo para os dados da empresa
@@ -64,6 +65,7 @@ export default function EmpresasScreen() {
   const [loading, setLoading] = useState(true);
 
   // Carregar empresas do banco de dados
+// Carrega empresas nao excluidas do banco de dados.
 const carregarEmpresas = async () => {
   console.log('📋 Carregando empresas...');
   setLoading(true);
@@ -92,6 +94,7 @@ console.log('📋 Empresas encontradas:', empresasDb.length);
 };
 
   // Recarregar quando a tela ganhar foco
+  // Recarrega a lista quando a tela ganhar foco.
   useFocusEffect(
     useCallback(() => {
       console.log('🔄 EmpresasScreen ganhou foco');
@@ -100,11 +103,13 @@ console.log('📋 Empresas encontradas:', empresasDb.length);
   );
 
   // Pesquisa automática
+  // Filtra por codigo de referencia ou nome fantasia.
   const empresasFiltradas = empresas.filter(empresa =>
     empresa.codigo_referencia?.toLowerCase().includes(pesquisa.toLowerCase()) ||
     empresa.nome_fantasia?.toLowerCase().includes(pesquisa.toLowerCase())
   );
 
+  // Abre a tela de cadastro de nova empresa.
   const handleAddEmpresa = () => {
     navigation.navigate('CadastroEmpresa');
   };
@@ -114,6 +119,7 @@ console.log('📋 Empresas encontradas:', empresasDb.length);
   };
 
   // Detalhes da empresa ao clicar no card
+  // Mostra detalhes resumidos da empresa ao tocar no card.
   const handleEmpresaPress = (empresa: Empresa) => {
     const statusText = empresa.ativo === 1 ? '✅ Ativado' : '❌ Desativado';
     

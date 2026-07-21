@@ -54,6 +54,7 @@ const HEADER_HEIGHT = 60;
 const PDF_A4_WIDTH = 595;
 const PDF_A4_HEIGHT = 842;
 
+// Tipo da navegacao desta tela no drawer.
 type FormularioVisitaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'FormularioVisita'>;
 
 export default function FormularioVisitaScreen() {
@@ -72,7 +73,7 @@ export default function FormularioVisitaScreen() {
     : Math.min(Math.max(windowWidth * 0.62, 300), 380);
 
   
-  // Estados das abas
+  // Controla se o usuario esta nos dados da visita ou na assinatura.
   const [abaAtiva, setAbaAtiva] = useState<'info' | 'assinatura'>('info');
   
   // Estados do formulário
@@ -99,13 +100,22 @@ export default function FormularioVisitaScreen() {
   const [compartilhandoPng, setCompartilhandoPng] = useState(false);
   const [scrollAssinaturaAtivo, setScrollAssinaturaAtivo] = useState(true);
   
+  // Refs usadas para assinatura, captura do documento e foco entre campos.
   const signatureRef = useRef<any>(null);
   const infoScrollRef = useRef<ScrollView>(null);
   const formularioDocumentoPngRef = useRef<View>(null);
+  const protocoloInputRef = useRef<TextInput>(null);
+  const solicitanteInputRef = useRef<TextInput>(null);
+  const dataInputRef = useRef<TextInput>(null);
+  const horaInicioInputRef = useRef<TextInput>(null);
+  const horaTerminoInputRef = useRef<TextInput>(null);
+  const descricaoInputRef = useRef<TextInput>(null);
+  // Ajusta textos dos botoes conforme novo formulario ou atualizacao.
   const formularioJaSalvo = !!ultimaVisita;
   const textoAcaoFormulario = formularioJaSalvo ? 'Atualizar' : 'Salvar';
   const textoBotaoPrincipal = abaAtiva === 'info' ? 'Próximo' : textoAcaoFormulario;
 
+  // Seleciona automaticamente a empresa recebida por navegacao.
   useEffect(() => {
     const empresaParam = route.params?.empresa;
 
@@ -147,6 +157,19 @@ export default function FormularioVisitaScreen() {
     return data;
   };
 
+  const obterMinutosDaHora = (hora: string) => {
+    const [horas, minutos] = hora.split(':').map(Number);
+
+    if (Number.isNaN(horas) || Number.isNaN(minutos)) {
+      return null;
+    }
+
+    return horas * 60 + minutos;
+  };
+
+  const obterMinutosDaData = (data: Date) =>
+    data.getHours() * 60 + data.getMinutes();
+
   const obterDataVisitaBanco = () => {
     return formatarDataBanco(
       obterDataDigitadaValida() || dataSelecionada
@@ -162,6 +185,7 @@ export default function FormularioVisitaScreen() {
 
   //Selecionar Data
   const selecionarData = () => {
+    Keyboard.dismiss();
 
     if (Platform.OS === 'android') {
 
@@ -175,7 +199,9 @@ export default function FormularioVisitaScreen() {
   } else {
 
     setDataPickerTemp(dataSelecionada);
-    setShowDatePicker(true);
+    setTimeout(() => {
+      setShowDatePicker(true);
+    }, 120);
 
   }
 
@@ -216,6 +242,7 @@ export default function FormularioVisitaScreen() {
   const selecionarHora = (
   tipo: 'inicio' | 'termino'
 ) => {
+  Keyboard.dismiss();
 
   if (
     Platform.OS === 'android'
@@ -251,9 +278,11 @@ export default function FormularioVisitaScreen() {
       horaSelecionada
     );
 
-    setShowHoraPicker(
-      true
-    );
+    setTimeout(() => {
+      setShowHoraPicker(
+        true
+      );
+    }, 120);
 
   }
 
@@ -296,23 +325,13 @@ export default function FormularioVisitaScreen() {
       horaInicio
     ) {
 
-      const inicio =
-        horaInicio
-          .split(':')
-          .map(Number);
-
-      const inicioDate =
-        new Date();
-
-      inicioDate
-        .setHours(
-          inicio[0],
-          inicio[1]
-        );
+      const minutosInicio = obterMinutosDaHora(horaInicio);
+      const minutosTermino = obterMinutosDaData(selectedDate);
 
       if (
-        selectedDate <
-        inicioDate
+        minutosInicio !== null &&
+        minutosTermino <
+        minutosInicio
       ) {
 
         Alert.alert(
@@ -352,12 +371,10 @@ export default function FormularioVisitaScreen() {
       });
 
     if (tipoHoraAtual === 'termino' && horaInicio) {
-      const inicio = horaInicio.split(':').map(Number);
-      const inicioDate = new Date();
+      const minutosInicio = obterMinutosDaHora(horaInicio);
+      const minutosTermino = obterMinutosDaData(selectedDate);
 
-      inicioDate.setHours(inicio[0], inicio[1]);
-
-      if (selectedDate < inicioDate) {
+      if (minutosInicio !== null && minutosTermino < minutosInicio) {
         Alert.alert(
           'Aviso',
           'O horário final não pode ser menor que o horário inicial'
@@ -1002,7 +1019,7 @@ const visita =
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
     >
       {/* Logo da Empresa */}
       <View style={styles.logoSection}>
@@ -1042,12 +1059,16 @@ const visita =
           Protocolo de Atendimento
         </Text>
         <TextInput
+          ref={protocoloInputRef}
           style={styles.input}
           onFocus={() => scrollInfoParaCampo(220)}
           placeholder="Numero do protocolo, se houver"
           placeholderTextColor="#ADB5BD"
           value={protocoloAtendimento}
           onChangeText={setProtocoloAtendimento}
+          returnKeyType="next"
+          onSubmitEditing={() => solicitanteInputRef.current?.focus()}
+          blurOnSubmit={false}
         />
       </View>
 
@@ -1056,6 +1077,15 @@ const visita =
         value={solicitante}
         onChange={setSolicitante}
         onFocus={() => scrollInfoParaCampo(300)}
+        inputRef={solicitanteInputRef}
+        onSubmitEditing={() => {
+          if (Platform.OS === 'web') {
+            dataInputRef.current?.focus();
+            return;
+          }
+
+          descricaoInputRef.current?.focus();
+        }}
       />
 
       {/* Data da Visita */}
@@ -1066,11 +1096,15 @@ const visita =
             <Text style={styles.required}> *</Text>
           </Text>
           <TextInput
+            ref={dataInputRef}
             style={styles.input}
             onFocus={() => scrollInfoParaCampo(380)}
             placeholder="DD/MM/AAAA"
             value={dataVisita}
             onChangeText={setDataVisita}
+            returnKeyType="next"
+            onSubmitEditing={() => horaInicioInputRef.current?.focus()}
+            blurOnSubmit={false}
           />
         </View>
       ) : (
@@ -1089,16 +1123,24 @@ const visita =
           </Text>
           <View style={styles.row}>
             <TextInput
+              ref={horaInicioInputRef}
               style={[styles.input, { flex: 1, marginRight: 8 }]}
               placeholder="Início (HH:MM)"
               value={horaInicio}
               onChangeText={setHoraInicio}
+              returnKeyType="next"
+              onSubmitEditing={() => horaTerminoInputRef.current?.focus()}
+              blurOnSubmit={false}
             />
             <TextInput
+              ref={horaTerminoInputRef}
               style={[styles.input, { flex: 1 }]}
               placeholder="Término (HH:MM)"
               value={horaTermino}
               onChangeText={setHoraTermino}
+              returnKeyType="next"
+              onSubmitEditing={() => descricaoInputRef.current?.focus()}
+              blurOnSubmit={false}
             />
           </View>
         </View>
@@ -1124,6 +1166,7 @@ const visita =
         value={descricao}
         onChange={setDescricao}
         onFocus={() => scrollInfoParaCampo(560)}
+        inputRef={descricaoInputRef}
       />
     </ScrollView>
   );
@@ -1354,11 +1397,11 @@ const renderAssinaturaAba = () => (
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
       {/* Cabeçalho */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
+      <View style={styles.header}>
         <Pressable onPress={() => navigation.navigate('Visitas' as never)} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
@@ -1395,8 +1438,8 @@ const renderAssinaturaAba = () => (
       {/* Conteúdo da aba */}
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior="height"
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : STATUS_BAR_HEIGHT + 8}
       >
         {abaAtiva === 'info' ? renderInfoAba() : renderAssinaturaAba()}
       </KeyboardAvoidingView>
@@ -1856,7 +1899,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 360 : 40,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 160 : 40,
   },
   logoSection: {
     alignItems: 'center',

@@ -447,6 +447,25 @@ console.log(
     }
   
 // Verifica se já existe consultor
+    const notificacoesExist = await db.getAllAsync(
+      'SELECT * FROM configuracoes WHERE chave = ?',
+      ['notificacoes_ativas']
+    );
+
+    if (notificacoesExist.length === 0) {
+      await db.runAsync(
+        `INSERT INTO configuracoes
+        (chave, valor, updated_at)
+        VALUES (?, ?, ?)`,
+        [
+          'notificacoes_ativas',
+          '1',
+          new Date().toISOString()
+        ]
+      );
+      console.log('Configuracao padrao de notificacoes criada');
+    }
+
     const consultorExistente = await db.getAllAsync(
       'SELECT id FROM consultor LIMIT 1'
     );
@@ -524,6 +543,27 @@ if (!empresaConsultorExistente) {
     '✅ Registro inicial empresa_consultor criado'
   );
 }
+
+// Remove massa de teste antiga que possa ter ficado gravada no banco local.
+await db.runAsync(
+  `DELETE FROM visitas
+   WHERE id LIKE 'seed-visita-%'
+   OR empresa_id IN (
+     SELECT id FROM empresas WHERE codigo_referencia LIKE 'TST%'
+   )`
+);
+await db.runAsync(
+  `DELETE FROM assinaturas
+   WHERE id LIKE 'seed-assinatura-%'
+   OR empresa_id IN (
+     SELECT id FROM empresas WHERE codigo_referencia LIKE 'TST%'
+   )`
+);
+await db.runAsync(
+  `DELETE FROM empresas
+   WHERE id LIKE 'seed-empresa-%'
+   OR codigo_referencia LIKE 'TST%'`
+);
 
 const empresaConsultorDados =
   await db.getAllAsync(

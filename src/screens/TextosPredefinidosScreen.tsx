@@ -35,6 +35,7 @@ import { TextosPredefinidosRepository } from '../database/textosPredefinidosRepo
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
+// Tipo da navegacao desta tela no drawer.
 type TextosPredefinidosScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'TextosPredefinidos'>;
 
 type Texto = {
@@ -52,7 +53,7 @@ export default function TextosPredefinidosScreen() {
   const [editingTexto, setEditingTexto] = useState<Texto | null>(null);
   const [formTexto, setFormTexto] = useState('');
 
-  // Carregar textos do banco de dados (com tratamento de erro)
+  // Carrega textos do banco com tratamento de erro.
   const carregarTextos = async () => {
 
     setLoading(true);
@@ -87,6 +88,7 @@ export default function TextosPredefinidosScreen() {
   };
 
   // Recarregar quando a tela ganhar foco
+  // Recarrega a lista quando a tela ganhar foco.
   useFocusEffect(
     useCallback(() => {
       carregarTextos();
@@ -97,18 +99,21 @@ export default function TextosPredefinidosScreen() {
     navigation.goBack();
   };
 
+  // Abre modal limpo para criar novo texto.
   const openAddModal = () => {
     setEditingTexto(null);
     setFormTexto('');
     setModalVisible(true);
   };
 
+  // Abre modal preenchido para editar texto existente.
   const openEditModal = (item: Texto) => {
     setEditingTexto(item);
     setFormTexto(item.texto);
     setModalVisible(true);
   };
 
+  // Salva novo texto ou atualiza o texto em edicao.
   const handleSalvar = async () => {
     if (formTexto.trim() === '') {
       Alert.alert('Erro', 'Digite um texto');

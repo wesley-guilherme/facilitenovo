@@ -1,5 +1,13 @@
+/**
+ * REPOSITORY: VisitasRepository
+ *
+ * FUNCAO:
+ * Centraliza historico, leitura e gravacao dos formularios de visita.
+ */
+
 import { db } from './initDatabase';
 
+// Tipo que representa uma visita/formulario salvo no SQLite.
 export type VisitaDB = {
   id: string;
   empresa_id: string;
@@ -18,6 +26,7 @@ export type VisitaDB = {
 
 export const VisitasRepository = {
 
+  // Lista visitas mais recentes primeiro.
   async listar(): Promise<VisitaDB[]> {
 
     return await db.getAllAsync<VisitaDB>(`
@@ -29,6 +38,7 @@ export const VisitasRepository = {
 
   },
 
+  // Lista visitas de uma data especifica em ordem de horario.
   async listarPorData(
   data: string
 ): Promise<VisitaDB[]> {
@@ -49,6 +59,7 @@ export const VisitasRepository = {
 
 },
 
+  // Lista empresas ativas ordenadas pela visita mais antiga ou ausente.
   async listarEmpresasPendentes() {
 
   return await db.getAllAsync(
@@ -85,6 +96,7 @@ ultima_visita ASC`
 
 },
 
+  // Carrega uma visita pelo id.
   async carregar(id: string): Promise<VisitaDB | null> {
 
     return await db.getFirstAsync<VisitaDB>(`

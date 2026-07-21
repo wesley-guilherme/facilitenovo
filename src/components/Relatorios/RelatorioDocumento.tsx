@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: RelatorioDocumento
+ *
+ * FUNCAO:
+ * Renderiza uma pagina A4 do relatorio usada no preview e como base do PDF.
+ */
+
 import React from 'react';
 import {
   Image,
@@ -188,12 +195,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   logoBox: {
-    width: 185,
+    width: 155,
     justifyContent: 'center',
-    paddingLeft: 4,
+    alignItems: 'flex-start',
+    paddingLeft: 2,
   },
   logo: {
-    width: 165,
+    width: 76,
     height: 48,
     resizeMode: 'contain',
   },

@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: TextoPredefinidoModal
+ *
+ * FUNCAO:
+ * Lista textos salvos para inserir rapidamente na descricao da visita.
+ */
+
 import React, {
   useEffect,
   useState,

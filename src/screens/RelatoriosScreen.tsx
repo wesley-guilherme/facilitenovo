@@ -5,10 +5,11 @@
  * layout padrao do Facilite.
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -45,6 +46,7 @@ import {
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const LINHAS_POR_PAGINA = RELATORIO_LINHAS_POR_PAGINA;
 
+// Valida e converte DD/MM/AAAA para formato do banco.
 const converterDataBRParaBanco = (valor: string) => {
   const limpa = valor.trim();
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(limpa);
@@ -70,6 +72,7 @@ const converterDataBRParaBanco = (valor: string) => {
   return `${anoTexto}-${mesTexto}-${diaTexto}`;
 };
 
+// Aplica mascara simples durante digitacao da data.
 const formatarDataDigitada = (valor: string) => {
   const digitos = valor.replace(/\D/g, '').slice(0, 8);
   const partes = [
@@ -93,6 +96,7 @@ type RelatorioItem = {
   cor: string;
 };
 
+// Lista visual de relatorios disponiveis.
 const RELATORIOS: RelatorioItem[] = [
   { id: 'clientes_rota', titulo: 'Clientes da Rota', icone: '🗺️', cor: '#2463EB' },
   { id: 'visitas_data', titulo: 'Visita de Clientes Por Data', icone: '📅', cor: '#34C759' },
@@ -117,7 +121,10 @@ export default function RelatoriosScreen() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [loading, setLoading] = useState(false);
   const [compartilhandoPdf, setCompartilhandoPdf] = useState(false);
+  const dataInicialRef = useRef<TextInput>(null);
+  const dataFinalRef = useRef<TextInput>(null);
 
+  // Calcula paginas do preview com a mesma regra do PDF.
   const totalPaginas = relatorioDados
     ? paginarLinhasRelatorio(
         relatorioDados.linhas,
@@ -125,6 +132,7 @@ export default function RelatoriosScreen() {
         Boolean(relatorioDados.resumoFinal)
       ).length
     : 1;
+  // Escala o A4 para caber melhor na tela do celular.
   const escalaPreview = Math.min(
     (larguraTela - 24) / RELATORIO_DOCUMENTO_A4_WIDTH,
     1
@@ -316,6 +324,8 @@ export default function RelatoriosScreen() {
               keyboardType="numeric"
               value={dias}
               onChangeText={setDias}
+              returnKeyType="done"
+              onSubmitEditing={handleConfirmarDias}
               autoFocus
             />
 
@@ -363,6 +373,7 @@ export default function RelatoriosScreen() {
 
               <Text style={styles.modalLabel}>Data Inicial</Text>
               <TextInput
+                ref={dataInicialRef}
                 style={styles.modalInput}
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#ADB5BD"
@@ -370,10 +381,14 @@ export default function RelatoriosScreen() {
                 value={dataInicial}
                 onChangeText={(texto) => setDataInicial(formatarDataDigitada(texto))}
                 maxLength={10}
+                returnKeyType="next"
+                onSubmitEditing={() => dataFinalRef.current?.focus()}
+                blurOnSubmit={false}
               />
 
               <Text style={styles.modalLabel}>Data Final</Text>
               <TextInput
+                ref={dataFinalRef}
                 style={styles.modalInput}
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#ADB5BD"
@@ -381,6 +396,11 @@ export default function RelatoriosScreen() {
                 value={dataFinal}
                 onChangeText={(texto) => setDataFinal(formatarDataDigitada(texto))}
                 maxLength={10}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  Keyboard.dismiss();
+                  handleConfirmarPeriodo();
+                }}
               />
 
               <View style={styles.modalButtons}>

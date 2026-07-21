@@ -1,5 +1,13 @@
+/**
+ * REPOSITORY: AssinaturasRepository
+ *
+ * FUNCAO:
+ * Busca, salva e exclui assinaturas vinculadas a empresas.
+ */
+
 import { db } from './initDatabase';
 
+// Tipo que representa uma assinatura salva no SQLite.
 export type AssinaturaDB = {
   id: string;
   empresa_id: string;
@@ -11,6 +19,7 @@ export type AssinaturaDB = {
 
 export const AssinaturasRepository = {
 
+  // Busca a assinatura mais recente vinculada a empresa.
   async buscarPorEmpresa(
     empresaId: string
   ): Promise<AssinaturaDB | null> {
@@ -24,6 +33,7 @@ export const AssinaturasRepository = {
 
   },
 
+  // Atualiza a assinatura existente ou cria uma nova.
   async salvar(
     assinatura: AssinaturaDB
   ) {
@@ -72,6 +82,7 @@ export const AssinaturasRepository = {
 
   },
 
+  // Remove a assinatura vinculada a empresa informada.
   async excluirPorEmpresa(
     empresaId: string
   ) {

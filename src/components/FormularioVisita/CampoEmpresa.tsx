@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: CampoEmpresa
+ *
+ * FUNCAO:
+ * Busca empresas ativas por codigo/nome e seleciona a empresa da visita.
+ */
+
 import React, {
   useEffect,
   useState
@@ -148,6 +155,7 @@ export default function CampoEmpresa({
         onChangeText={pesquisar}
         placeholder="Código ou empresa"
         style={styles.input}
+        returnKeyType="done"
       />
     )}
 

@@ -34,7 +34,7 @@ import {
   Dimensions,
   Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmpresaRepository } from '../database/empresaRepository';
 
@@ -66,17 +66,19 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
 import * as ImagePicker from 'expo-image-picker';
 
-
+// Constantes de layout usadas pelo cabecalho e teclado.
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const HEADER_HEIGHT = 56;
 
+// Tipo da navegacao desta tela no drawer.
 type CadastroEmpresaScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'CadastroEmpresa'>;
 
 export default function CadastroEmpresaScreen() {
   const navigation = useNavigation<CadastroEmpresaScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   
-  // Refs para os inputs
+  // Refs para controlar foco, scroll e tecla "proximo".
   const scrollViewRef = useRef<ScrollView>(null);
   const nomeRef = useRef<TextInput>(null);
   const proprietarioRef = useRef<TextInput>(null);
@@ -102,6 +104,7 @@ export default function CadastroEmpresaScreen() {
   const [codigoReferencia, setCodigoReferencia] = useState('');
   const [anotacoes, setAnotacoes] = useState('');
 
+  // Limpa dados, logo e mensagens de erro para um novo cadastro.
   const limparFormulario = () => {
   setCodigoReferencia('');
   setNomeFantasia('');
@@ -142,14 +145,25 @@ export default function CadastroEmpresaScreen() {
     codigoReferencia: '',
   });
 
+  // Mantem compatibilidade com chamadas antigas de scroll.
   const scrollParaCampo = (_y: number) => {};
 
+  // Reinicia a tela sempre que ela recebe foco novamente.
   useFocusEffect(
     useCallback(() => {
       limparFormulario();
+      Keyboard.dismiss();
+
+      const timeout = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+        nomeRef.current?.focus();
+      }, 180);
+
+      return () => clearTimeout(timeout);
     }, [])
   );
 
+  // Formata e valida o celular enquanto o consultor digita.
   const handleCelularChange = (texto: string) => {
     const formatado = formatarCelular(texto);
     setCelular(formatado);
@@ -164,6 +178,7 @@ export default function CadastroEmpresaScreen() {
     }
   };
 
+// Normaliza e valida o codigo de referencia digitado.
 const handleCodigoChange = (texto: string) => {
   const codigo = limitarCodigoReferencia(texto);
 
@@ -182,6 +197,7 @@ const handleCodigoChange = (texto: string) => {
   }
 };
 
+// Abre a galeria, salva a logo escolhida e remove a antiga.
 const handleSelecionarLogo = async () => {
   const { status } =
     await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -238,6 +254,7 @@ const handleSelecionarLogo = async () => {
   }
 };
 
+// Confirma a remocao da logo antes de apagar o arquivo salvo.
 const handleExcluirLogo = () => {
   Alert.alert(
     'Excluir Logo',
@@ -273,6 +290,7 @@ const handleExcluirLogo = () => {
   );
 };
 
+  // Valida, normaliza e grava a nova empresa no banco.
   const handleSalvar = async () => {
    
     const nomeError = validarNomeFantasia(nomeFantasia);
@@ -329,6 +347,7 @@ const handleExcluirLogo = () => {
     return;
   }
 
+// Organiza os valores na mesma ordem esperada pelo repository.
 const valoresInsert = [
   empresaId,
   codigoReferenciaFinal,
@@ -351,6 +370,7 @@ const valoresInsert = [
     );
 
       if (Platform.OS === 'web') {
+        Keyboard.dismiss();
         limparFormulario();
         navigation.navigate('Empresas');
         return;
@@ -362,6 +382,7 @@ const valoresInsert = [
         [{ 
           text: 'OK',
            onPress: () => {
+            Keyboard.dismiss();
             limparFormulario();
             navigation.navigate('Empresas') 
           },
@@ -374,16 +395,19 @@ const valoresInsert = [
     }
   };
 
+  // Cancela o cadastro e volta para a listagem de empresas.
   const handleCancelar = () => {
+    Keyboard.dismiss();
     limparFormulario();
     navigation.navigate('Empresas');
   };
 
+  // Renderiza o formulario completo de cadastro.
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
+      <View style={styles.header}>
         <Pressable onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
         </Pressable>
@@ -395,16 +419,16 @@ const valoresInsert = [
 
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior="height"
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT + (Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT) + 16 }]}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets={true}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           >
             <View style={styles.logoSection}>
               <TouchableOpacity 
@@ -490,6 +514,9 @@ const valoresInsert = [
                       setCidade(text);
                       setErrors(prev => ({ ...prev, cidade: validarCidade(text) }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => estadoRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
                 </View>
@@ -514,6 +541,9 @@ const valoresInsert = [
                         estado: validarEstado(uf) 
                       }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => enderecoRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
                 </View>
@@ -534,6 +564,9 @@ const valoresInsert = [
                     setEndereco(text);
                     setErrors(prev => ({ ...prev, endereco: validarEndereco(text) }));
                   }}
+                  returnKeyType="next"
+                  onSubmitEditing={() => numeroRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
                 {errors.endereco ? <Text style={styles.errorText}>{errors.endereco}</Text> : null}
               </View>
@@ -555,6 +588,9 @@ const valoresInsert = [
                       setNumero(text);
                       setErrors(prev => ({ ...prev, numero: validarNumero(text) }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
                 </View>
@@ -578,6 +614,9 @@ const valoresInsert = [
                     setEmail(text);
                     setErrors(prev => ({ ...prev, email: validarEmail(text) }));
                   }}
+                  returnKeyType="next"
+                  onSubmitEditing={() => celularRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
                 {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
@@ -595,6 +634,9 @@ const valoresInsert = [
                   keyboardType="numeric"
                   value={celular}
                   onChangeText={handleCelularChange}
+                  returnKeyType="next"
+                  onSubmitEditing={() => codigoRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
                 <Text style={styles.helperText}>Digite DDD + 9 números (ex: 11999999999)</Text>
                 {errors.celular ? <Text style={styles.errorText}>{errors.celular}</Text> : null}
@@ -613,6 +655,9 @@ const valoresInsert = [
                   keyboardType="numeric"
                   value={codigoReferencia}
                   onChangeText={handleCodigoChange}
+                  returnKeyType="next"
+                  onSubmitEditing={() => anotacoesRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
                 <Text style={styles.helperText}>Apenas números</Text>
                 {errors.codigoReferencia ? <Text style={styles.errorText}>{errors.codigoReferencia}</Text> : null}
@@ -631,6 +676,9 @@ const valoresInsert = [
                   textAlignVertical="top"
                   value={anotacoes}
                   onChangeText={setAnotacoes}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  blurOnSubmit
                 />
               </View>
             </View>
@@ -686,7 +734,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 380 : 40,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 160 : 40,
   },
   logoSection: {
     alignItems: 'center',

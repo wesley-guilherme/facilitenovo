@@ -1,5 +1,13 @@
+/**
+ * SERVICE: visitasAvisoService
+ *
+ * FUNCAO:
+ * Calcula empresas criticas/em atencao conforme dias sem visita.
+ */
+
 import { db } from '../database/initDatabase';
 
+// Status visual usado pela Home e pela tela de Visitas.
 export type StatusAvisoVisita = 'normal' | 'atencao' | 'critico';
 
 export type EmpresaAvisoVisita = {
@@ -59,6 +67,7 @@ export type ResumoAvisosVisita = {
   totalPendentes: number;
 };
 
+// Converte data de banco para Date local sem deslocar fuso.
 export const criarDataLocal = (data: string) => {
   const partes = data.split('-').map(Number);
 
@@ -70,6 +79,7 @@ export const criarDataLocal = (data: string) => {
   return new Date(data);
 };
 
+// Formata data ISO do banco para DD/MM/AAAA.
 export const formatarDataBR = (data: string) => {
   const partes = data.split('-');
 
@@ -81,6 +91,7 @@ export const formatarDataBR = (data: string) => {
   return new Date(data).toLocaleDateString('pt-BR');
 };
 
+// Carrega a configuracao de dias de aviso, usando 30 como padrao.
 export const carregarDiasAviso = async () => {
   try {
     const config = await db.getFirstAsync<{ valor: string }>(
@@ -96,6 +107,22 @@ export const carregarDiasAviso = async () => {
   }
 };
 
+// Carrega se os avisos internos devem aparecer no aplicativo.
+export const carregarNotificacoesAtivas = async () => {
+  try {
+    const config = await db.getFirstAsync<{ valor: string }>(
+      'SELECT valor FROM configuracoes WHERE chave = ?',
+      ['notificacoes_ativas']
+    );
+
+    return config?.valor !== '0';
+  } catch (error) {
+    console.log('Configuracao de notificacoes nao encontrada, usando ativo');
+    return true;
+  }
+};
+
+// Calcula dias completos desde a ultima visita.
 const calcularDiasDesde = (dataVisita: string) => {
   const agora = new Date();
   const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
@@ -105,6 +132,7 @@ const calcularDiasDesde = (dataVisita: string) => {
   return Math.max(Math.floor(diffTime / (1000 * 60 * 60 * 24)), 0);
 };
 
+// Classifica a empresa como normal, atencao ou critica.
 const classificarEmpresa = (
   empresa: EmpresaBanco,
   ultimaVisita: VisitaAviso | null,
@@ -142,6 +170,17 @@ const classificarEmpresa = (
 
 export const carregarResumoAvisosVisita = async (): Promise<ResumoAvisosVisita> => {
   const diasAviso = await carregarDiasAviso();
+  const notificacoesAtivas = await carregarNotificacoesAtivas();
+
+  if (!notificacoesAtivas) {
+    return {
+      diasAviso,
+      empresas: [],
+      criticas: [],
+      atencao: [],
+      totalPendentes: 0,
+    };
+  }
 
   const empresasDb = await db.getAllAsync<EmpresaBanco>(
     'SELECT * FROM empresas WHERE ativo = 1 AND deleted_at IS NULL ORDER BY nome_fantasia ASC'

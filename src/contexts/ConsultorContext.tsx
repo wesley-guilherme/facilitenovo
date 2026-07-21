@@ -9,6 +9,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { ConsultorRepository } from '../database/consultorRepository';
 
+// Tipo compartilhado pelas telas que usam dados do consultor.
 export type Consultor = {
   id: string;
   nome: string;
@@ -27,7 +28,7 @@ type ConsultorContextData = {
 
 const ConsultorContext = createContext<ConsultorContextData | undefined>(undefined);
 
-// Dados iniciais vazios (sem mock)
+// Dados iniciais vazios enquanto o banco ainda nao carregou.
 const CONSULTOR_INICIAL: Consultor = {
   id: '',
   nome: '',
@@ -40,14 +41,18 @@ const CONSULTOR_INICIAL: Consultor = {
 
 export function ConsultorProvider({ children }: { children: ReactNode }) {
   const [consultor, setConsultor] = useState<Consultor>(CONSULTOR_INICIAL);
+
+  // Carrega o consultor salvo assim que o provider inicia.
   useEffect(() => {
   carregarConsultor();
 }, []);
 
+  // Atualiza parcialmente o consultor em memoria.
   const atualizarConsultor = (dados: Partial<Consultor>) => {
     setConsultor((prev: Consultor) => ({ ...prev, ...dados }));
   };
 
+// Busca o perfil do consultor no banco e normaliza campos nulos.
 const carregarConsultor = async () => {
 
   try {
@@ -89,6 +94,7 @@ const carregarConsultor = async () => {
   );
 }
 
+// Hook usado pelas telas para acessar o ConsultorContext.
 export function useConsultor() {
   const context = useContext(ConsultorContext);
   if (!context) {

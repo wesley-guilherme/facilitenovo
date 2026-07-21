@@ -1,9 +1,8 @@
-import { EmpresaConsultor } from './../contexts/EmpresaContext';
 /**
- * TIPAGEM DAS ROTAS DO DRAWER
- * 
- * Define todos os nomes de telas disponíveis no Drawer Navigator
- * Isso permite que o TypeScript autocomplete e previna erros de digitação
+ * TYPES: navigation
+ *
+ * FUNCAO:
+ * Centraliza as rotas e parametros aceitos pelo Drawer Navigator.
  */
 
 export type RootDrawerParamList = {

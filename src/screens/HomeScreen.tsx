@@ -32,6 +32,7 @@ import {
 
 type HomeScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Home'>;
 
+// Cards exibidos na tela inicial para navegar entre modulos.
 const menuItems = [
   { id: 'perfil', title: 'Meu Perfil', icon: '👤' },
   { id: 'empresa', title: 'Cadastrar Empresa', icon: '🏢' },
@@ -47,8 +48,10 @@ export default function HomeScreen() {
   const [carregandoAvisos, setCarregandoAvisos] = useState(false);
   const [modalAvisosVisible, setModalAvisosVisible] = useState(false);
 
+  // Total exibido no sino de notificacoes.
   const totalPendentes = resumoAvisos?.totalPendentes || 0;
 
+  // Recalcula empresas criticas/em atencao para o sino.
   const carregarAvisos = useCallback(async () => {
     setCarregandoAvisos(true);
     try {
@@ -62,12 +65,14 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Atualiza os avisos sempre que a Home volta para foco.
   useFocusEffect(
     useCallback(() => {
       carregarAvisos();
     }, [carregarAvisos])
   );
 
+  // Configura o botao do sino no cabecalho da Home.
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -93,6 +98,7 @@ export default function HomeScreen() {
     ? consultor.nome
     : 'Consultor';
 
+  // Decide para qual tela cada card deve navegar.
   const handleNavigate = (title: string) => {
     if (title === 'Meu Perfil') {
       navigation.navigate('MeuPerfil');
@@ -109,11 +115,13 @@ export default function HomeScreen() {
     }
   };
 
+  // Abre o formulario diretamente pela empresa do aviso.
   const abrirFormularioEmpresa = (empresa: EmpresaAvisoVisita) => {
     setModalAvisosVisible(false);
     navigation.navigate('FormularioVisita', { empresa });
   };
 
+  // Monta o texto resumido de atraso exibido no modal.
   const textoStatusEmpresa = (empresa: EmpresaAvisoVisita) => {
     if (!empresa.ultimaVisita) {
       return 'Nunca visitada';

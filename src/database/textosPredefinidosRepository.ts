@@ -1,5 +1,13 @@
+/**
+ * REPOSITORY: TextosPredefinidosRepository
+ *
+ * FUNCAO:
+ * Gerencia textos reutilizaveis usados na descricao das visitas.
+ */
+
 import { db } from './initDatabase';
 
+// Tipo que representa um texto predefinido salvo no SQLite.
 export type TextoPredefinidoDB = {
   id: string;
   texto: string;
@@ -9,6 +17,7 @@ export type TextoPredefinidoDB = {
 
 export const TextosPredefinidosRepository = {
 
+  // Lista textos salvos em ordem alfabetica.
   async listar(): Promise<TextoPredefinidoDB[]> {
 
     return await db.getAllAsync<TextoPredefinidoDB>(
@@ -21,6 +30,7 @@ export const TextosPredefinidosRepository = {
 
   },
 
+  // Insere um novo texto predefinido.
   async inserir(
     valores: any[]
   ) {
@@ -39,6 +49,7 @@ export const TextosPredefinidosRepository = {
 
   },
 
+  // Atualiza o conteudo de um texto existente.
   async atualizar(
     valores: any[]
   ) {
@@ -56,6 +67,7 @@ export const TextosPredefinidosRepository = {
 
   },
 
+  // Exclui um texto predefinido pelo id.
   async excluir(id: string) {
 
     return await db.runAsync(

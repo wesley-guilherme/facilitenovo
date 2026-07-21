@@ -1,5 +1,13 @@
+/**
+ * REPOSITORY: ConsultorRepository
+ *
+ * FUNCAO:
+ * Le e atualiza o perfil unico do consultor no banco local.
+ */
+
 import { db } from './initDatabase';
 
+// Tipo que representa o consultor salvo no SQLite.
 export type ConsultorDB = {
   id: string;
   nome: string;
@@ -14,6 +22,7 @@ export type ConsultorDB = {
 
 export const ConsultorRepository = {
 
+// Carrega o unico registro de perfil do consultor.
 async carregar(): Promise<ConsultorDB | null> {
 
   const dados = await db.getFirstAsync<ConsultorDB>(
@@ -23,6 +32,7 @@ async carregar(): Promise<ConsultorDB | null> {
   return dados;
 },
 
+  // Atualiza os dados do perfil do consultor.
   async salvar(
   valores: any[]
 ) {

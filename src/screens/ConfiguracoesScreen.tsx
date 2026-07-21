@@ -22,6 +22,7 @@ import {
   Switch,
   ActivityIndicator,
   Dimensions,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,11 +40,13 @@ const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 type ConfiguracoesScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'Configuracoes'>;
 
 // Dados das configurações
+// Valores padrao usados quando ainda nao ha configuracao salva.
 const CONFIG_INICIAL = {
   diasAviso: '30',
   notificacoesAtivas: true,
 };
 
+// Tabelas de cadastro incluidas mesmo sem historico de visitas.
 const TABELAS_CADASTRO_BACKUP = [
   'empresas',
   'configuracoes',
@@ -52,11 +55,13 @@ const TABELAS_CADASTRO_BACKUP = [
   'empresa_consultor',
 ] as const;
 
+// Tabelas opcionais para backup completo com historico.
 const TABELAS_HISTORICO_BACKUP = [
   'visitas',
   'assinaturas',
 ] as const;
 
+// Lista completa usada para limpar/restaurar todas as tabelas conhecidas.
 const TABELAS_BACKUP = [
   'empresas',
   'visitas',
@@ -67,11 +72,13 @@ const TABELAS_BACKUP = [
   'empresa_consultor',
 ] as const;
 
+// Decide se o backup tera apenas cadastros ou tambem historico.
 const obterTabelasBackup = (incluirHistorico: boolean) => [
   ...TABELAS_CADASTRO_BACKUP,
   ...(incluirHistorico ? TABELAS_HISTORICO_BACKUP : []),
 ];
 
+// Insere um registro restaurado usando colunas dinamicas e parametros.
 const inserirRegistroBackup = async (
   tabela: string,
   item: Record<string, unknown>
@@ -101,20 +108,30 @@ export default function ConfiguracoesScreen() {
   const [tamanhoBanco, setTamanhoBanco] = useState('0 KB');
 
   // Carregar informações dos dados
+  // Carrega configuracoes e estatisticas ao abrir a tela.
   useEffect(() => {
     carregarConfiguracoes();
     carregarInfoDados();
   }, []);
 
+  // Busca dias de aviso salvos no banco.
   const carregarConfiguracoes = async () => {
     try {
       const config = await db.getFirstAsync<{ valor: string }>(
         'SELECT valor FROM configuracoes WHERE chave = ?',
         ['dias_aviso']
       );
+      const configNotificacoes = await db.getFirstAsync<{ valor: string }>(
+        'SELECT valor FROM configuracoes WHERE chave = ?',
+        ['notificacoes_ativas']
+      );
 
       if (config?.valor) {
         setDiasAviso(config.valor);
+      }
+
+      if (configNotificacoes?.valor) {
+        setNotificacoesAtivas(configNotificacoes.valor === '1');
       }
     } catch (error) {
       console.log('Erro ao carregar configurações:', error);
@@ -178,6 +195,16 @@ export default function ConfiguracoesScreen() {
         [
           'dias_aviso',
           String(dias),
+          new Date().toISOString(),
+        ]
+      );
+      await db.runAsync(
+        `INSERT OR REPLACE INTO configuracoes
+          (chave, valor, updated_at)
+         VALUES (?, ?, ?)`,
+        [
+          'notificacoes_ativas',
+          notificacoesAtivas ? '1' : '0',
           new Date().toISOString(),
         ]
       );
@@ -364,6 +391,8 @@ export default function ConfiguracoesScreen() {
               keyboardType="numeric"
               value={diasAviso}
               onChangeText={setDiasAviso}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
             <Text style={styles.helperText}>
               Avisará após {diasAviso || '30'} dias da última visita
@@ -379,6 +408,11 @@ export default function ConfiguracoesScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
+          <Text style={styles.helperText}>
+            {notificacoesAtivas
+              ? 'Avisos internos aparecem no sino e na tela Visitas'
+              : 'Avisos internos ficam ocultos no aplicativo'}
+          </Text>
         </View>
 
         {/* Seção: Backup */}

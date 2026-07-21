@@ -1,3 +1,10 @@
+/**
+ * SERVICE: relatorioPdfService
+ *
+ * FUNCAO:
+ * Gera HTML paginado e compartilha relatorios em PDF.
+ */
+
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -7,12 +14,14 @@ import type {
   RelatorioLinha,
 } from './relatoriosService';
 
+// Tamanho A4 usado para manter preview e PDF alinhados.
 const PDF_WIDTH = 595;
 const PDF_HEIGHT = 842;
 
 export const RELATORIO_LINHAS_POR_PAGINA = 36;
 export const RELATORIO_LINHAS_ULTIMA_PAGINA_COM_RESUMO = 32;
 
+// Escapa textos antes de inserir no HTML do PDF.
 const escaparHtml = (valor?: string | null) =>
   String(valor || '')
     .replace(/&/g, '&amp;')
@@ -21,6 +30,7 @@ const escaparHtml = (valor?: string | null) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
+// Identifica o tipo da imagem para montar data URI no PDF.
 const obterMimeImagem = (uri: string) => {
   const uriLimpa = uri.split('?')[0].toLowerCase();
 
@@ -35,6 +45,7 @@ const obterMimeImagem = (uri: string) => {
   return 'image/png';
 };
 
+// Converte imagem local em base64 para aparecer no PDF.
 const resolverImagemParaPdf = async (uri?: string | null) => {
   if (!uri) {
     return null;
@@ -64,6 +75,7 @@ const formatarHora = (data: Date) =>
     minute: '2-digit',
   });
 
+// Formata data compacta usada no nome do arquivo.
 const dataArquivo = (data: Date) => {
   const dia = String(data.getDate()).padStart(2, '0');
   const mes = String(data.getMonth() + 1).padStart(2, '0');
@@ -72,6 +84,7 @@ const dataArquivo = (data: Date) => {
   return `${dia}${mes}${ano}`;
 };
 
+// Remove acentos e caracteres invalidos do nome do arquivo.
 const normalizarNomeArquivo = (valor: string) =>
   valor
     .normalize('NFD')
@@ -79,6 +92,7 @@ const normalizarNomeArquivo = (valor: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '');
 
+// Divide linhas em paginas e reserva espaco para totalizador final.
 export const paginarLinhasRelatorio = (
   linhas: RelatorioLinha[],
   linhasPorPagina = RELATORIO_LINHAS_POR_PAGINA,
@@ -126,6 +140,7 @@ export const paginarLinhasRelatorio = (
   return paginas;
 };
 
+// Monta o cabecalho A4 com logo, titulo e metadados.
 const renderizarCabecalho = (
   titulo: string,
   logoPdf: string | null,
@@ -283,10 +298,12 @@ const gerarHtmlRelatorio = async (
             min-height: 60px;
           }
           .logo-box {
-            width: 185px;
+            width: 155px;
+            display: flex;
+            align-items: flex-start;
           }
           .logo {
-            max-width: 165px;
+            max-width: 76px;
             max-height: 48px;
             object-fit: contain;
           }

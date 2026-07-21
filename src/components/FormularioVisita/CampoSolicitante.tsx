@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: CampoSolicitante
+ *
+ * FUNCAO:
+ * Captura o nome do solicitante responsavel por confirmar a visita.
+ */
+
 import React from 'react';
 
 import {
@@ -11,12 +18,16 @@ type Props = {
   value: string;
   onChange: (texto: string) => void;
   onFocus?: () => void;
+  inputRef?: React.RefObject<TextInput | null>;
+  onSubmitEditing?: () => void;
 };
 
 export default function CampoSolicitante({
   value,
   onChange,
   onFocus,
+  inputRef,
+  onSubmitEditing,
 }: Props) {
 
   return (
@@ -27,6 +38,7 @@ export default function CampoSolicitante({
       </Text>
 
       <TextInput
+        ref={inputRef}
         style={styles.input}
         placeholder="Nome do solicitante"
         placeholderTextColor="#999"
@@ -35,6 +47,8 @@ export default function CampoSolicitante({
         onFocus={onFocus}
         autoCapitalize="words"
         returnKeyType="next"
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={false}
       />
 
     </View>

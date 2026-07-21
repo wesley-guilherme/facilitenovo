@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: CampoData
+ *
+ * FUNCAO:
+ * Exibe a data da visita como campo acionavel para abrir o seletor de data.
+ */
+
 import React from 'react';
 
 import {

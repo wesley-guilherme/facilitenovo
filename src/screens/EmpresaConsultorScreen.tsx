@@ -33,7 +33,7 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmpresaConsultorRepository } from '../database/empresaConsultorRepository';
 
@@ -53,9 +53,20 @@ type EmpresaConsultorScreenNavigationProp = DrawerNavigationProp<RootDrawerParam
 
 export default function EmpresaConsultorScreen() {
   const navigation = useNavigation<EmpresaConsultorScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { empresa, atualizarEmpresa } = useEmpresa();
 
   const scrollViewRef = useRef<ScrollView>(null);
+  const nomeRef = useRef<TextInput>(null);
+  const enderecoRef = useRef<TextInput>(null);
+  const numeroRef = useRef<TextInput>(null);
+  const bairroRef = useRef<TextInput>(null);
+  const cidadeRef = useRef<TextInput>(null);
+  const estadoRef = useRef<TextInput>(null);
+  const celularRef = useRef<TextInput>(null);
+  const telefoneRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const mensagemRef = useRef<TextInput>(null);
   
   // Estados do formulário
   const [logoPequena, setLogoPequena] = useState<string | null>(empresa?.logoPequena || null);
@@ -301,6 +312,12 @@ const handleExcluirImagem = (
     navigation.goBack();
   };
 
+  const rolarParaMensagem = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  };
+
   const handleSalvar =  async () => {
     const logoPequenaError = !logoPequena ? 'Logo pequena e obrigatoria' : '';
     const logoMediaError = !logoMedia ? 'Logo marca d agua e obrigatoria' : '';
@@ -400,10 +417,10 @@ const handleExcluirImagem = (
 }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleVoltar} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
@@ -416,14 +433,15 @@ const handleExcluirImagem = (
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? HEADER_HEIGHT + 50 + 20 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT + (Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT) + 16 }]}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           >
             {/* Logo Pequena - SEM O X SOBREPOSTO */}
             <View style={styles.logoSection}>
@@ -481,10 +499,14 @@ const handleExcluirImagem = (
               <View style={styles.field}>
                 <Text style={styles.label}>Nome da Empresa <Text style={styles.required}>*</Text></Text>
                 <TextInput
+                  ref={nomeRef}
                   style={[styles.input, errors.nome ? styles.inputError : null]}
                   placeholder="Digite o nome da empresa"
                   placeholderTextColor="#ADB5BD"
                   value={nome}
+                  returnKeyType="next"
+                  onSubmitEditing={() => enderecoRef.current?.focus()}
+                  blurOnSubmit={false}
                   onChangeText={(text) => {
                     setNome(text);
                     setErrors(prev => ({ ...prev, nome: text.trim() === '' ? 'Nome da empresa é obrigatório' : '' }));
@@ -497,6 +519,7 @@ const handleExcluirImagem = (
                 <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
                   <Text style={styles.label}>Endereço <Text style={styles.required}>*</Text></Text>
                   <TextInput
+                    ref={enderecoRef}
                     style={[styles.input, errors.endereco ? styles.inputError : null]}
                     placeholder="Rua, Avenida..."
                     placeholderTextColor="#ADB5BD"
@@ -505,12 +528,16 @@ const handleExcluirImagem = (
                       setEndereco(text);
                       setErrors(prev => ({ ...prev, endereco: text.trim() === '' ? 'Endereço é obrigatório' : '' }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => numeroRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.endereco ? <Text style={styles.errorText}>{errors.endereco}</Text> : null}
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Número <Text style={styles.required}>*</Text></Text>
                   <TextInput
+                    ref={numeroRef}
                     style={[styles.input, errors.numero ? styles.inputError : null]}
                     placeholder="Número"
                     placeholderTextColor="#ADB5BD"
@@ -520,6 +547,9 @@ const handleExcluirImagem = (
                       setNumero(text);
                       setErrors(prev => ({ ...prev, numero: text.trim() === '' ? 'Número é obrigatório' : '' }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => bairroRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.numero ? <Text style={styles.errorText}>{errors.numero}</Text> : null}
                 </View>
@@ -528,6 +558,7 @@ const handleExcluirImagem = (
               <View style={styles.field}>
                 <Text style={styles.label}>Bairro <Text style={styles.required}>*</Text></Text>
                 <TextInput
+                  ref={bairroRef}
                   style={[styles.input, errors.bairro ? styles.inputError : null]}
                   placeholder="Bairro"
                   placeholderTextColor="#ADB5BD"
@@ -536,6 +567,9 @@ const handleExcluirImagem = (
                     setBairro(text);
                     setErrors(prev => ({ ...prev, bairro: text.trim() === '' ? 'Bairro é obrigatório' : '' }));
                   }}
+                  returnKeyType="next"
+                  onSubmitEditing={() => cidadeRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
                 {errors.bairro ? <Text style={styles.errorText}>{errors.bairro}</Text> : null}
               </View>
@@ -544,6 +578,7 @@ const handleExcluirImagem = (
                 <View style={[styles.field, { flex: 2, marginRight: 8 }]}>
                   <Text style={styles.label}>Cidade <Text style={styles.required}>*</Text></Text>
                   <TextInput
+                    ref={cidadeRef}
                     style={[styles.input, errors.cidade ? styles.inputError : null]}
                     placeholder="Cidade"
                     placeholderTextColor="#ADB5BD"
@@ -552,12 +587,16 @@ const handleExcluirImagem = (
                       setCidade(text);
                       setErrors(prev => ({ ...prev, cidade: text.trim() === '' ? 'Cidade é obrigatória' : '' }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => estadoRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.cidade ? <Text style={styles.errorText}>{errors.cidade}</Text> : null}
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Estado <Text style={styles.required}>*</Text></Text>
                   <TextInput
+                    ref={estadoRef}
                     style={[styles.input, errors.estado ? styles.inputError : null]}
                     placeholder="UF"
                     placeholderTextColor="#ADB5BD"
@@ -568,6 +607,9 @@ const handleExcluirImagem = (
                       setEstado(text.toUpperCase());
                       setErrors(prev => ({ ...prev, estado: text.trim() === '' ? 'Estado é obrigatório' : '' }));
                     }}
+                    returnKeyType="next"
+                    onSubmitEditing={() => celularRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.estado ? <Text style={styles.errorText}>{errors.estado}</Text> : null}
                 </View>
@@ -577,24 +619,32 @@ const handleExcluirImagem = (
                 <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                   <Text style={styles.label}>Celular</Text>
                   <TextInput
+                    ref={celularRef}
                     style={[styles.input, errors.celular ? styles.inputError : null]}
                     placeholder="(99)-99999-9999"
                     placeholderTextColor="#ADB5BD"
                     keyboardType="numeric"
                     value={celular}
                     onChangeText={handleCelularChange}
+                    returnKeyType="next"
+                    onSubmitEditing={() => telefoneRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.celular ? <Text style={styles.errorText}>{errors.celular}</Text> : null}
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Telefone</Text>
                   <TextInput
+                    ref={telefoneRef}
                     style={[styles.input, errors.telefone ? styles.inputError : null]}
                     placeholder="(99)-9999-9999"
                     placeholderTextColor="#ADB5BD"
                     keyboardType="numeric"
                     value={telefone}
                     onChangeText={handleTelefoneChange}
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                   {errors.telefone ? <Text style={styles.errorText}>{errors.telefone}</Text> : null}
                 </View>
@@ -603,6 +653,7 @@ const handleExcluirImagem = (
               <View style={styles.field}>
                 <Text style={styles.label}>E-mail <Text style={styles.required}>*</Text></Text>
                 <TextInput
+                  ref={emailRef}
                   style={[styles.input, errors.email ? styles.inputError : null]}
                   placeholder="contato@empresa.com"
                   placeholderTextColor="#ADB5BD"
@@ -613,6 +664,9 @@ const handleExcluirImagem = (
                     setEmail(text);
                     setErrors(prev => ({ ...prev, email: validarEmail(text) }));
                   }}
+                  returnKeyType="next"
+                  onSubmitEditing={() => mensagemRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
                 {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
@@ -620,6 +674,7 @@ const handleExcluirImagem = (
               <View style={styles.field}>
                 <Text style={styles.label}>Mensagem do Formulário</Text>
                 <TextInput
+                  ref={mensagemRef}
                   style={styles.textArea}
                   placeholder="Mensagem que aparecerá no formulário de visita..."
                   placeholderTextColor="#ADB5BD"
@@ -628,6 +683,10 @@ const handleExcluirImagem = (
                   textAlignVertical="top"
                   value={mensagemFormulario}
                   onChangeText={setMensagemFormulario}
+                  onFocus={rolarParaMensagem}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  blurOnSubmit
                 />
               </View>
             </View>
@@ -685,7 +744,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingTop: 12,
+    paddingBottom: 160,
   },
   logoSection: {
     alignItems: 'center',

@@ -1,5 +1,13 @@
+/**
+ * REPOSITORY: EmpresaRepository
+ *
+ * FUNCAO:
+ * Centraliza consultas e gravacoes da tabela de empresas atendidas.
+ */
+
 import { db } from './initDatabase';
 
+// Tipo que representa uma empresa salva no SQLite.
 export type EmpresaDB = {
   id: string;
   codigo_referencia: string;
@@ -22,6 +30,7 @@ export type EmpresaDB = {
 
 export const EmpresaRepository = {
 
+  // Lista empresas nao excluidas em ordem alfabetica.
   async listar(): Promise<EmpresaDB[]> {
 
   return await db.getAllAsync<EmpresaDB>(
@@ -33,6 +42,7 @@ export const EmpresaRepository = {
 
 },
 
+  // Busca empresa ativa pelo codigo de referencia.
   async buscarPorCodigo(codigo: string) {
     return await db.getFirstAsync(
       `SELECT *
@@ -43,6 +53,7 @@ export const EmpresaRepository = {
     );
   },
 
+  // Verifica conflito de codigo ao cadastrar nova empresa.
   async existeCodigo(codigo: string) {
     const resultado = 
       await db.getFirstAsync(
@@ -56,6 +67,7 @@ export const EmpresaRepository = {
     return !!resultado;
   },
 
+  // Verifica conflito de codigo ignorando a empresa em edicao.
   async existeCodigoEdicao(
   codigo: string,
   empresaId: string
@@ -73,6 +85,7 @@ export const EmpresaRepository = {
   return !!resultado;
 },
 
+  // Insere uma nova empresa na tabela empresas.
   async inserirEmpresa(
     valores: any[]
   ) {

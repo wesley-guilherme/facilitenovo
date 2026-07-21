@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: CampoHorario
+ *
+ * FUNCAO:
+ * Mostra horarios de inicio/termino e abre os seletores correspondentes.
+ */
+
 import React from 'react';
 
 import {

@@ -1,3 +1,11 @@
+/**
+ * UTILS: validator
+ *
+ * FUNCAO:
+ * Valida campos obrigatorios e formatos antes de salvar cadastros.
+ */
+
+// Lista de UFs aceitas nos cadastros.
 export const ESTADOS_BRASIL = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES',
   'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR',
@@ -5,6 +13,7 @@ export const ESTADOS_BRASIL = [
   'SP', 'SE', 'TO'
 ];
 
+// Valida nome fantasia obrigatorio.
 export const validarNomeFantasia = (texto: string): string => {
   if (!texto.trim()) {
     return 'Nome fantasia é obrigatório';
@@ -13,6 +22,7 @@ export const validarNomeFantasia = (texto: string): string => {
   return '';
 };
 
+// Valida proprietario obrigatorio.
 export const validarProprietario = (texto: string): string => {
   if (!texto.trim()) {
     return 'Proprietário é obrigatório';
@@ -21,6 +31,7 @@ export const validarProprietario = (texto: string): string => {
   return '';
 };
 
+// Valida cidade obrigatoria.
 export const validarCidade = (texto: string): string => {
   if (!texto.trim()) {
     return 'Cidade é obrigatória';
@@ -29,6 +40,7 @@ export const validarCidade = (texto: string): string => {
   return '';
 };
 
+// Valida UF obrigatoria e existente.
 export const validarEstado = (texto: string): string => {
   const uf = texto.trim().toUpperCase();
 
@@ -43,6 +55,7 @@ export const validarEstado = (texto: string): string => {
   return '';
 };
 
+// Valida endereco obrigatorio.
 export const validarEndereco = (texto: string): string => {
   if (!texto.trim()) {
     return 'Endereço é obrigatório';
@@ -51,6 +64,7 @@ export const validarEndereco = (texto: string): string => {
   return '';
 };
 
+// Valida numero obrigatorio.
 export const validarNumero = (texto: string): string => {
   if (!texto.trim()) {
     return 'Número é obrigatório';
@@ -59,6 +73,7 @@ export const validarNumero = (texto: string): string => {
   return '';
 };
 
+// Valida e-mail obrigatorio em formato basico.
 export const validarEmail = (email: string): string => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -73,6 +88,7 @@ export const validarEmail = (email: string): string => {
   return '';
 };
 
+// Valida celular obrigatorio com DDD + 9 digitos.
 export const validarCelular = (celular: string): string => {
   const numeros = celular.replace(/\D/g, '');
 
@@ -87,6 +103,7 @@ export const validarCelular = (celular: string): string => {
   return '';
 };
 
+// Valida codigo obrigatorio, numerico e limitado.
 export const validarCodigoReferencia = (texto: string): string => {
   const codigo = texto.trim();
 

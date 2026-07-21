@@ -1,3 +1,10 @@
+/**
+ * COMPONENTE: CampoDescricao
+ *
+ * FUNCAO:
+ * Controla a descricao do atendimento e insere textos predefinidos.
+ */
+
 import React, { useState } from 'react';
 
 import {
@@ -17,12 +24,14 @@ type Props = {
     texto: string
   ) => void;
   onFocus?: () => void;
+  inputRef?: React.RefObject<TextInput | null>;
 };
 
 export default function CampoDescricao({
   value,
   onChange,
   onFocus,
+  inputRef,
 }: Props) {
 
   const [modalVisible,
@@ -73,6 +82,7 @@ export default function CampoDescricao({
       </TouchableOpacity>
 
       <TextInput
+        ref={inputRef}
         multiline
         numberOfLines={8}
         value={value}

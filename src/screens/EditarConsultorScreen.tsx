@@ -31,7 +31,7 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { RootDrawerParamList } from '../types/navigation';
@@ -44,13 +44,15 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 const HEADER_HEIGHT = 56;
 
+// Tipo da navegacao desta tela no drawer.
 type EditarConsultorScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'EditarConsultor'>;
 
 export default function EditarConsultorScreen() {
   const navigation = useNavigation<EditarConsultorScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { consultor: consultorContext, atualizarConsultor } = useConsultor();
   
-  // Refs para os inputs
+  // Refs para controlar foco, scroll e tecla "proximo".
   const scrollViewRef = useRef<ScrollView>(null);
   const nomeInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
@@ -71,7 +73,7 @@ export default function EditarConsultorScreen() {
     consultorContext?.foto
   );
 
-  // Estados de erro
+  // Estados com mensagens de erro exibidas nos campos.
   const [errors, setErrors] = useState({
     nome: '',
     email: '',
@@ -79,6 +81,7 @@ export default function EditarConsultorScreen() {
     rota: '',
   });
 
+  // Mantem compatibilidade com chamadas antigas de scroll.
   const scrollParaCampo = (_y: number) => {};
 
   // Função para validar nome (apenas letras)
@@ -126,6 +129,7 @@ export default function EditarConsultorScreen() {
     return formatado;
   };
 
+  // Formata e valida o WhatsApp enquanto o consultor digita.
   const handleWhatsAppChange = (texto: string) => {
     const numeros = texto.replace(/\D/g, '');
     const formatado = formatarWhatsApp(numeros);
@@ -147,6 +151,7 @@ export default function EditarConsultorScreen() {
     return '';
   };
 
+// Abre a galeria, salva a foto escolhida e remove a antiga.
 const handleSelecionarFoto = async () => {
   const { status } =
     await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -312,11 +317,11 @@ const handleSelecionarFoto = async () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
       
       {/* Cabeçalho com título "Editar Perfil" */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT + 8 }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleCancelar} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancelar</Text>
         </TouchableOpacity>
@@ -329,16 +334,16 @@ const handleSelecionarFoto = async () => {
       {/* Conteúdo rolável */}
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior="height"
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : HEADER_HEIGHT + STATUS_BAR_HEIGHT}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT + (Platform.OS === 'ios' ? 50 : STATUS_BAR_HEIGHT) + 16 }]}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets={true}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           >
             {/* Seção da Foto */}
             <View style={styles.fotoSection}>
@@ -519,7 +524,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 360 : 40,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 160 : 40,
   },
   fotoSection: {
     alignItems: 'center',

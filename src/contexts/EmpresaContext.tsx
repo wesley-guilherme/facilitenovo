@@ -15,6 +15,7 @@ import React, {
 
 import { EmpresaConsultorRepository } from '../database/empresaConsultorRepository';
 
+// Tipo compartilhado pelas telas que usam a empresa do consultor.
 export type EmpresaConsultor = {
   id: string;
   logoPequena: string | null;
@@ -42,7 +43,7 @@ const EmpresaContext =
     undefined
   );
 
-// Dados iniciais vazios
+// Dados iniciais vazios enquanto o banco ainda nao carregou.
 const EMPRESA_INICIAL: EmpresaConsultor = {
   id: '',
   logoPequena: null,
@@ -70,10 +71,12 @@ export function EmpresaProvider({
       EMPRESA_INICIAL
     );
 
+  // Carrega a empresa do consultor salva assim que o provider inicia.
   useEffect(() => {
     carregarEmpresa();
   }, []);
 
+  // Atualiza parcialmente a empresa do consultor em memoria.
   const atualizarEmpresa = (
     dados: Partial<EmpresaConsultor>
   ) => {
@@ -83,6 +86,7 @@ export function EmpresaProvider({
     }));
   };
 
+  // Busca a empresa do consultor no banco e converte para o formato do app.
   const carregarEmpresa = async () => {
 
     try {
@@ -142,6 +146,7 @@ export function EmpresaProvider({
   );
 }
 
+// Hook usado pelas telas para acessar o EmpresaContext.
 export function useEmpresa() {
 
   const context =

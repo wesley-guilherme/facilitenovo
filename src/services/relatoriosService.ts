@@ -1,5 +1,13 @@
+/**
+ * SERVICE: relatoriosService
+ *
+ * FUNCAO:
+ * Monta os dados de cada relatorio a partir das tabelas locais.
+ */
+
 import { db } from '../database/initDatabase';
 
+// Identificadores dos relatorios disponiveis na tela.
 export type RelatorioId =
   | 'clientes_rota'
   | 'visitas_data'
@@ -7,6 +15,7 @@ export type RelatorioId =
   | 'clientes_mais_visitados'
   | 'clientes_menos_visitados';
 
+// Define uma coluna renderizada no preview e no PDF.
 export type RelatorioColuna = {
   chave: string;
   titulo: string;
@@ -16,12 +25,14 @@ export type RelatorioColuna = {
 
 export type RelatorioLinha = Record<string, string>;
 
+// Opcoes de filtro enviadas pelos modais dos relatorios.
 export type RelatorioOpcoes = {
   dias?: number;
   dataInicial?: string;
   dataFinal?: string;
 };
 
+// Estrutura final que a tela e o PDF conseguem renderizar.
 export type RelatorioDados = {
   titulo: string;
   colunas: RelatorioColuna[];
@@ -59,6 +70,7 @@ type EmpresaContagem = EmpresaRelatorio & {
   total_visitas: number;
 };
 
+// Formata data do banco para exibicao em portugues.
 const formatarDataBR = (data?: string | null) => {
   if (!data) {
     return 'Nunca';
@@ -74,11 +86,13 @@ const formatarDataBR = (data?: string | null) => {
   return new Date(data).toLocaleDateString('pt-BR');
 };
 
+// Cria Date local para evitar deslocamento por fuso horario.
 const criarDataLocal = (data: string) => {
   const [ano, mes, dia] = data.split('-').map(Number);
   return new Date(ano, mes - 1, dia);
 };
 
+// Calcula dias sem visita usando apenas data, sem horario.
 const diasDesde = (data?: string | null) => {
   if (!data) {
     return 9999;
@@ -96,6 +110,7 @@ const diasDesde = (data?: string | null) => {
   return Math.max(Math.floor(diff / (1000 * 60 * 60 * 24)), 0);
 };
 
+// Colunas reutilizadas em relatorios baseados em clientes.
 const colunasClientes = (): RelatorioColuna[] => [
   { chave: 'codigo', titulo: 'COD.', flex: 0.8 },
   { chave: 'empresa', titulo: 'CLIENTE', flex: 2.5 },
@@ -103,6 +118,7 @@ const colunasClientes = (): RelatorioColuna[] => [
   { chave: 'contato', titulo: 'CONTATO', flex: 1.5 },
 ];
 
+// Converte empresa do banco para linha de relatorio.
 const mapearEmpresa = (empresa: EmpresaRelatorio): RelatorioLinha => ({
   codigo: empresa.codigo_referencia || '-',
   empresa: empresa.nome_fantasia || '-',
@@ -110,6 +126,7 @@ const mapearEmpresa = (empresa: EmpresaRelatorio): RelatorioLinha => ({
   contato: empresa.contato || '-',
 });
 
+// Carrega e monta o relatorio solicitado pela tela.
 export const carregarRelatorio = async (
   id: RelatorioId,
   opcoes?: RelatorioOpcoes

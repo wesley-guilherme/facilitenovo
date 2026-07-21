@@ -37,20 +37,24 @@ import { useConsultor } from '../contexts/ConsultorContext';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = StatusBar.currentHeight || 0;
 
+// Tipo da navegacao desta tela no drawer.
 type MeuPerfilScreenNavigationProp = DrawerNavigationProp<RootDrawerParamList, 'MeuPerfil'>;
 
 export default function MeuPerfilScreen() {
   const navigation = useNavigation<MeuPerfilScreenNavigationProp>();
   const { consultor } = useConsultor();
 
+  // Abre a tela de edicao levando os dados atuais do consultor.
   const handleEditarPerfil = () => {
     navigation.navigate('EditarConsultor', { consultor });
   };
 
+  // Retorna para a tela anterior.
   const handleVoltar = () => {
     navigation.goBack();
   };
 
+  // Renderiza o perfil somente para visualizacao.
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FC" />
