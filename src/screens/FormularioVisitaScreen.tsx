@@ -87,7 +87,6 @@ export default function FormularioVisitaScreen() {
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
   const [dataPickerTemp, setDataPickerTemp] = useState(new Date());
   const [showHoraPicker, setShowHoraPicker] = useState(false);
-  const [horaSelecionada, setHoraSelecionada] = useState(new Date());
   const [horaPickerTemp, setHoraPickerTemp] = useState(new Date());
   const [horaInicio, setHoraInicio] = useState('');
   const [horaTermino, setHoraTermino] = useState('');
@@ -171,6 +170,27 @@ export default function FormularioVisitaScreen() {
   const obterMinutosDaData = (data: Date) =>
     data.getHours() * 60 + data.getMinutes();
 
+  const criarDataComHora = (hora?: string) => {
+    const data = new Date();
+    const minutos = hora ? obterMinutosDaHora(hora) : null;
+
+    if (minutos !== null) {
+      data.setHours(Math.floor(minutos / 60), minutos % 60, 0, 0);
+      return data;
+    }
+
+    data.setSeconds(0, 0);
+    return data;
+  };
+
+  const obterHoraInicialPicker = (tipo: 'inicio' | 'termino') => {
+    if (tipo === 'inicio') {
+      return criarDataComHora(horaInicio);
+    }
+
+    return criarDataComHora(horaTermino || horaInicio);
+  };
+
   const obterDataVisitaBanco = () => {
     return formatarDataBanco(
       obterDataDigitadaValida() || dataSelecionada
@@ -244,6 +264,7 @@ export default function FormularioVisitaScreen() {
   tipo: 'inicio' | 'termino'
 ) => {
   Keyboard.dismiss();
+  const horaInicialPicker = obterHoraInicialPicker(tipo);
 
   if (
     Platform.OS === 'android'
@@ -251,7 +272,7 @@ export default function FormularioVisitaScreen() {
 
     DateTimePickerAndroid.open({
 
-      value: horaSelecionada,
+      value: horaInicialPicker,
 
       mode: 'time',
 
@@ -276,7 +297,7 @@ export default function FormularioVisitaScreen() {
     );
 
     setHoraPickerTemp(
-      horaSelecionada
+      horaInicialPicker
     );
 
     setTimeout(() => {
@@ -357,10 +378,6 @@ export default function FormularioVisitaScreen() {
 
   }
 
-  setHoraSelecionada(
-    selectedDate
-  );
-
 };
 
   const confirmarHoraIos = () => {
@@ -390,7 +407,6 @@ export default function FormularioVisitaScreen() {
       setHoraInicio(hora);
     }
 
-    setHoraSelecionada(selectedDate);
     setShowHoraPicker(false);
   };
 
@@ -829,11 +845,11 @@ const visita =
           .section-title { font-size: 15px; font-weight: 800; }
           .description { position: relative; min-height: 210px; border: 1px solid #DDE3EE; border-radius: 8px; padding: 14px; margin-bottom: 12px; overflow: hidden; }
           .description-text { position: relative; z-index: 1; font-size: 13px; line-height: 20px; color: #1F2937; }
-          .watermark-img { position: absolute; top: 56px; left: 50%; margin-left: -150px; width: 300px; height: 110px; object-fit: contain; opacity: 0.07; }
-          .test-watermark { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); width: 310px; height: 72px; display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0.07; overflow: hidden; }
-          .test-watermark-icon { width: 52px; height: 52px; border-radius: 26px; background-color: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; }
-          .test-watermark-name { color: #1769AA; font-size: 48px; line-height: 52px; font-weight: 800; }
-          .test-watermark-sub { color: #6B7280; font-size: 14px; line-height: 17px; font-weight: 800; letter-spacing: 4px; }
+          .watermark-img { position: absolute; top: 24px; left: 50%; margin-left: -240px; width: 480px; height: 170px; object-fit: contain; opacity: 0.09; }
+          .test-watermark { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); width: 480px; height: 120px; display: flex; align-items: center; justify-content: center; gap: 12px; opacity: 0.09; overflow: hidden; }
+          .test-watermark-icon { width: 78px; height: 78px; border-radius: 39px; background-color: #1769AA; color: white; display: flex; align-items: center; justify-content: center; font-size: 52px; font-weight: 800; }
+          .test-watermark-name { color: #1769AA; font-size: 74px; line-height: 78px; font-weight: 800; }
+          .test-watermark-sub { color: #6B7280; font-size: 20px; line-height: 23px; font-weight: 800; letter-spacing: 4px; }
           .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background-color: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
           .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background-color: #FAFBFD; text-align: center; }
           .signature-img { width: 70%; height: 60px; object-fit: contain; }
@@ -1011,7 +1027,14 @@ const visita =
     setAssinatura(null);
   };
 
-  const scrollInfoParaCampo = (_y: number) => {};
+  const scrollInfoParaCampo = (y: number) => {
+    setTimeout(() => {
+      infoScrollRef.current?.scrollTo({
+        y,
+        animated: true,
+      });
+    }, Platform.OS === 'ios' ? 320 : 120);
+  };
 
   // Aba 1: Informações
   const renderInfoAba = () => (
@@ -1166,7 +1189,7 @@ const visita =
       <CampoDescricao
         value={descricao}
         onChange={setDescricao}
-        onFocus={() => scrollInfoParaCampo(560)}
+        onFocus={() => scrollInfoParaCampo(720)}
         inputRef={descricaoInputRef}
       />
     </ScrollView>
@@ -1241,6 +1264,8 @@ const renderAssinaturaAba = () => (
           style={styles.signature}
         />
       )}
+
+      <View pointerEvents="none" style={styles.signatureGuideLine} />
 
     </View>
 
@@ -1643,7 +1668,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 160 : 40,
+    paddingBottom: Platform.OS === 'ios' ? 280 : 80,
   },
   logoSection: {
     alignItems: 'center',
@@ -1869,12 +1894,24 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: 380,
     marginBottom: 16,
+    position: 'relative',
   },
   signature: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E9ECEF',
+  },
+  signatureGuideLine: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    top: '58%',
+    height: 2,
+    backgroundColor: '#111827',
+    borderRadius: 1,
+    zIndex: 10,
+    elevation: 10,
   },
   webSignatureFallback: {
     flex: 1,

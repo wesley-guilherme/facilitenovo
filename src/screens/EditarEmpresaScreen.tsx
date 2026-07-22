@@ -161,7 +161,14 @@ useEffect(() => {
     codigoReferencia: '',
   });
 
-  const scrollParaCampo = (_y: number) => {};
+  const scrollParaCampo = (y: number) => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y,
+        animated: true,
+      });
+    }, Platform.OS === 'ios' ? 320 : 120);
+  };
 
 
   // Função para formatar celular
@@ -849,7 +856,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 160 : 40,
+    paddingBottom: Platform.OS === 'ios' ? 280 : 80,
   },
   logoSection: {
     alignItems: 'center',
