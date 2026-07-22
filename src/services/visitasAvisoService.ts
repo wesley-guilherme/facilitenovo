@@ -107,21 +107,6 @@ export const carregarDiasAviso = async () => {
   }
 };
 
-// Carrega se os avisos internos devem aparecer no aplicativo.
-export const carregarNotificacoesAtivas = async () => {
-  try {
-    const config = await db.getFirstAsync<{ valor: string }>(
-      'SELECT valor FROM configuracoes WHERE chave = ?',
-      ['notificacoes_ativas']
-    );
-
-    return config?.valor !== '0';
-  } catch (error) {
-    console.log('Configuracao de notificacoes nao encontrada, usando ativo');
-    return true;
-  }
-};
-
 // Calcula dias completos desde a ultima visita.
 const calcularDiasDesde = (dataVisita: string) => {
   const agora = new Date();
@@ -170,17 +155,6 @@ const classificarEmpresa = (
 
 export const carregarResumoAvisosVisita = async (): Promise<ResumoAvisosVisita> => {
   const diasAviso = await carregarDiasAviso();
-  const notificacoesAtivas = await carregarNotificacoesAtivas();
-
-  if (!notificacoesAtivas) {
-    return {
-      diasAviso,
-      empresas: [],
-      criticas: [],
-      atencao: [],
-      totalPendentes: 0,
-    };
-  }
 
   const empresasDb = await db.getAllAsync<EmpresaBanco>(
     'SELECT * FROM empresas WHERE ativo = 1 AND deleted_at IS NULL ORDER BY nome_fantasia ASC'

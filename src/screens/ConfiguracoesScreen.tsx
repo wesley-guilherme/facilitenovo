@@ -43,7 +43,6 @@ type ConfiguracoesScreenNavigationProp = DrawerNavigationProp<RootDrawerParamLis
 // Valores padrao usados quando ainda nao ha configuracao salva.
 const CONFIG_INICIAL = {
   diasAviso: '30',
-  notificacoesAtivas: true,
 };
 
 // Tabelas de cadastro incluidas mesmo sem historico de visitas.
@@ -101,7 +100,6 @@ const inserirRegistroBackup = async (
 export default function ConfiguracoesScreen() {
   const navigation = useNavigation<ConfiguracoesScreenNavigationProp>();  
   const [diasAviso, setDiasAviso] = useState(CONFIG_INICIAL.diasAviso);
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(CONFIG_INICIAL.notificacoesAtivas);
   const [incluirHistoricoBackup, setIncluirHistoricoBackup] = useState(true);
   const [loading, setLoading] = useState(false);
   const [quantidadeFormularios, setQuantidadeFormularios] = useState(0);
@@ -121,17 +119,9 @@ export default function ConfiguracoesScreen() {
         'SELECT valor FROM configuracoes WHERE chave = ?',
         ['dias_aviso']
       );
-      const configNotificacoes = await db.getFirstAsync<{ valor: string }>(
-        'SELECT valor FROM configuracoes WHERE chave = ?',
-        ['notificacoes_ativas']
-      );
 
       if (config?.valor) {
         setDiasAviso(config.valor);
-      }
-
-      if (configNotificacoes?.valor) {
-        setNotificacoesAtivas(configNotificacoes.valor === '1');
       }
     } catch (error) {
       console.log('Erro ao carregar configurações:', error);
@@ -198,17 +188,6 @@ export default function ConfiguracoesScreen() {
           new Date().toISOString(),
         ]
       );
-      await db.runAsync(
-        `INSERT OR REPLACE INTO configuracoes
-          (chave, valor, updated_at)
-         VALUES (?, ?, ?)`,
-        [
-          'notificacoes_ativas',
-          notificacoesAtivas ? '1' : '0',
-          new Date().toISOString(),
-        ]
-      );
-
       setDiasAviso(String(dias));
       Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
     } catch (error) {
@@ -399,20 +378,6 @@ export default function ConfiguracoesScreen() {
             </Text>
           </View>
 
-          <View style={styles.switchContainer}>
-            <Text style={styles.switchLabel}>Notificações ativas</Text>
-            <Switch
-              value={notificacoesAtivas}
-              onValueChange={setNotificacoesAtivas}
-              trackColor={{ false: '#E9ECEF', true: '#2463EB' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-          <Text style={styles.helperText}>
-            {notificacoesAtivas
-              ? 'Avisos internos aparecem no sino e na tela Visitas'
-              : 'Avisos internos ficam ocultos no aplicativo'}
-          </Text>
         </View>
 
         {/* Seção: Backup */}
