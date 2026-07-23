@@ -506,9 +506,9 @@ const styles = StyleSheet.create({
   },
   osSignatureImage: {
     width: '70%',
-    height: 82,
+    height: 96,
     resizeMode: 'contain',
-    marginBottom: -2,
+    marginBottom: -16,
   },
   osSignatureFallbackText: {
     fontSize: 23,

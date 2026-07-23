@@ -88,6 +88,7 @@ export default function FormularioVisitaScreen() {
   const [dataPickerTemp, setDataPickerTemp] = useState(new Date());
   const [showHoraPicker, setShowHoraPicker] = useState(false);
   const [horaPickerTemp, setHoraPickerTemp] = useState(new Date());
+  const [horaPickerKey, setHoraPickerKey] = useState(0);
   const [horaInicio, setHoraInicio] = useState('');
   const [horaTermino, setHoraTermino] = useState('');
   const [tipoHoraAtual, setTipoHoraAtual] = useState< 'inicio' | 'termino' >('inicio');
@@ -167,8 +168,22 @@ export default function FormularioVisitaScreen() {
     return horas * 60 + minutos;
   };
 
-  const obterMinutosDaData = (data: Date) =>
-    data.getHours() * 60 + data.getMinutes();
+  const formatarHoraDate = (data: Date) =>
+    data.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+  const horarioTerminoValido = (horaTerminoSelecionada: string) => {
+    const minutosInicio = obterMinutosDaHora(horaInicio);
+    const minutosTermino = obterMinutosDaHora(horaTerminoSelecionada);
+
+    return (
+      minutosInicio === null ||
+      minutosTermino === null ||
+      minutosTermino > minutosInicio
+    );
+  };
 
   const criarDataComHora = (hora?: string) => {
     const data = new Date();
@@ -300,6 +315,8 @@ export default function FormularioVisitaScreen() {
       horaInicialPicker
     );
 
+    setHoraPickerKey((key) => key + 1);
+
     setTimeout(() => {
       setShowHoraPicker(
         true
@@ -323,82 +340,39 @@ export default function FormularioVisitaScreen() {
     return;
   }
 
-  if (
-    !selectedDate
-  )
+  if (!selectedDate) {
     return;
+  }
 
-  const hora =
-    selectedDate
-      .toLocaleTimeString(
-        'pt-BR',
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
+  const hora = formatarHoraDate(selectedDate);
+
+  if (tipo === 'termino') {
+    if (horaInicio && !horarioTerminoValido(hora)) {
+      Alert.alert(
+        'Aviso',
+        'O hor\u00e1rio final precisa ser maior que o hor\u00e1rio inicial'
       );
-
-  if (
-    tipo ===
-    'termino'
-  ) {
-
-    if (
-      horaInicio
-    ) {
-
-      const minutosInicio = obterMinutosDaHora(horaInicio);
-      const minutosTermino = obterMinutosDaData(selectedDate);
-
-      if (
-        minutosInicio !== null &&
-        minutosTermino <
-        minutosInicio
-      ) {
-
-        Alert.alert(
-          'Aviso',
-          'O horário final não pode ser menor que o horário inicial'
-        );
-
-        return;
-      }
-
+      return;
     }
 
-    setHoraTermino(
-      hora
-    );
-
-  } else {
-
-    setHoraInicio(
-      hora
-    );
-
+    setHoraTermino(hora);
+    return;
   }
+
+  setHoraInicio(hora);
 
 };
 
   const confirmarHoraIos = () => {
     const selectedDate = horaPickerTemp;
-    const hora =
-      selectedDate.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+    const hora = formatarHoraDate(selectedDate);
 
-    if (tipoHoraAtual === 'termino' && horaInicio) {
-      const minutosInicio = obterMinutosDaHora(horaInicio);
-      const minutosTermino = obterMinutosDaData(selectedDate);
-
-      if (minutosInicio !== null && minutosTermino < minutosInicio) {
-        Alert.alert(
-          'Aviso',
-          'O horário final não pode ser menor que o horário inicial'
-        );
-        return;
-      }
+    if (tipoHoraAtual === 'termino' && horaInicio && !horarioTerminoValido(hora)) {
+      Alert.alert(
+        'Aviso',
+        'O hor\u00e1rio final precisa ser maior que o hor\u00e1rio inicial'
+      );
+      return;
     }
 
     if (tipoHoraAtual === 'termino') {
@@ -409,7 +383,6 @@ export default function FormularioVisitaScreen() {
 
     setShowHoraPicker(false);
   };
-
 const limparDadosDaVisita = () => {
   setProtocoloAtendimento('');
   setSolicitante('');
@@ -852,7 +825,7 @@ const visita =
           .test-watermark-sub { color: #6B7280; font-size: 20px; line-height: 23px; font-weight: 800; letter-spacing: 4px; }
           .message { min-height: 54px; display: flex; align-items: center; justify-content: center; background-color: #1769AA; color: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; text-align: center; font-size: 12px; line-height: 17px; font-weight: 600; }
           .signature { border: 1px solid #E4E8F0; border-radius: 8px; padding: 12px 14px 12px; background-color: #FAFBFD; text-align: center; }
-          .signature-img { width: 70%; height: 60px; object-fit: contain; }
+          .signature-img { width: 70%; height: 72px; object-fit: contain; margin-bottom: -12px; }
           .signature-fallback { font-size: 20px; color: #111827; font-style: italic; margin-bottom: 10px; }
           .signature-line { width: 76%; border-bottom: 1px solid #111827; margin: 0 auto 6px; }
           .signature-label { font-size: 12px; font-weight: 800; }
@@ -884,8 +857,8 @@ const visita =
             <div><div class="label">Data da visita</div><div class="value">${escaparHtml(dataVisita)}</div></div>
             <div><div class="label">Protocolo de Atendimento</div><div class="value">${escaparHtml(protocoloAtendimento.trim() || 'Não Informado')}</div></div>
             <div><div class="label">Solicitante</div><div class="value">${escaparHtml(solicitante || 'Não Informado')}</div></div>
-            <div><div class="label">Horário de Início</div><div class="value">${escaparHtml(horaInicio || '--:--')}</div></div>
-            <div><div class="label">Horário de Término</div><div class="value">${escaparHtml(horaTermino || '--:--')}</div></div>
+            <div><div class="label">Hor&aacute;rio de In&iacute;cio</div><div class="value">${escaparHtml(horaInicio || '--:--')}</div></div>
+            <div><div class="label">Hor&aacute;rio de T&eacute;rmino</div><div class="value">${escaparHtml(horaTermino || '--:--')}</div></div>
           </section>
           <section class="section">
             <div class="rule"></div>
@@ -1413,10 +1386,11 @@ const renderAssinaturaAba = () => (
             <View style={styles.pickerModalCard}>
               <Text style={styles.pickerModalTitle}>
                 {tipoHoraAtual === 'inicio'
-                  ? 'Horário de Início'
-                  : 'Horário de Término'}
+                  ? 'Hor\u00e1rio de In\u00edcio'
+                  : 'Hor\u00e1rio de T\u00e9rmino'}
               </Text>
               <DateTimePicker
+                key={`hora-${tipoHoraAtual}-${horaPickerKey}`}
                 value={horaPickerTemp}
                 mode="time"
                 display="spinner"
@@ -1906,7 +1880,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 18,
     right: 18,
-    top: '58%',
+    top: '78%',
     height: 2,
     backgroundColor: '#111827',
     borderRadius: 1,
